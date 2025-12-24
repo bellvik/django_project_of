@@ -1,0 +1,34 @@
+<!-- core/templates/core/home.html -->
+<h2>Планировщик поездок (MVP)</h2>
+<form method="get">
+    {{ form.as_p }}
+    <button type="submit">Найти маршрут</button>
+</form>
+
+{% if routes %}
+<h3>Найдено вариантов: {{ routes|length }}</h3>
+{% for route in routes %}
+<div style="border: 1px solid #ccc; margin: 10px; padding: 10px;">
+    <p><strong>В пути:</strong> {{ route.adjusted_time }} мин (пробки: x{{ route.traffic_coef }})</p>
+    <p><strong>Этапы:</strong></p>
+    <!-- СТАЛО (работает): -->
+    <ul>
+        {% for segment in route.segments %}
+        <li>
+            {% if segment.type == 'walk' %}
+                🚶 {{ segment.type }}: {{ segment.time }} мин
+                <small>({{ segment.details.text }})</small>
+            {% elif segment.type == 'transport' %}
+                🚌 {{ segment.type }}: {{ segment.time }} мин
+                <small>({{ segment.details.route_name }}: 
+                    {% for stop in segment.details.stops %}{{ stop }}{% if not forloop.last %} → {% endif %}{% endfor %})
+                </small>
+            {% else %}
+                {{ segment.type }}: {{ segment.time }} мин
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endfor %}
+{% endif %}
