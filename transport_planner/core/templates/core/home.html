@@ -1,34 +1,133 @@
-<!-- core/templates/core/home.html -->
-<h2>Планировщик поездок (MVP)</h2>
-<form method="get">
+
+<h2>Планировщик поездок ЕкбТранспорт+</h2>
+
+{% if use_real_api %}
+<div class="alert alert-info">
+    <strong>Режим реальных API:</strong> Используется TomTom для геокодирования и маршрутизации
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <strong>Режим заглушек:</strong> Используются тестовые данные
+</div>
+{% endif %}
+
+<form method="get" id="route-form">
     {{ form.as_p }}
-    <button type="submit">Найти маршрут</button>
+    <button type="submit" class="btn btn-primary">Найти маршрут</button>
 </form>
 
+{% if error_message %}
+<div class="alert alert-danger">{{ error_message }}</div>
+{% endif %}
+
+{% if geocoded_points %}
+<div class="card mt-3">
+    <div class="card-header">
+        <strong>Найденные точки:</strong>
+    </div>
+    <div class="card-body">
+        <p><strong>Откуда:</strong> {{ geocoded_points.start.address }} 
+        ({{ geocoded_points.start.lat|floatformat:4 }}, {{ geocoded_points.start.lon|floatformat:4 }})</p>
+        <p><strong>Куда:</strong> {{ geocoded_points.end.address }}
+        ({{ geocoded_points.end.lat|floatformat:4 }}, {{ geocoded_points.end.lon|floatformat:4 }})</p>
+        <small class="text-muted">Источник: {{ geocoded_points.start.source }}</small>
+    </div>
+</div>
+{% endif %}
+
 {% if routes %}
-<h3>Найдено вариантов: {{ routes|length }}</h3>
+<h3 class="mt-4">Найдено вариантов: {{ routes|length }}</h3>
+
 {% for route in routes %}
-<div style="border: 1px solid #ccc; margin: 10px; padding: 10px;">
-    <p><strong>В пути:</strong> {{ route.adjusted_time }} мин (пробки: x{{ route.traffic_coef }})</p>
-    <p><strong>Этапы:</strong></p>
-    <!-- СТАЛО (работает): -->
-    <ul>
-        {% for segment in route.segments %}
-        <li>
-            {% if segment.type == 'walk' %}
-                🚶 {{ segment.type }}: {{ segment.time }} мин
-                <small>({{ segment.details.text }})</small>
-            {% elif segment.type == 'transport' %}
-                🚌 {{ segment.type }}: {{ segment.time }} мин
-                <small>({{ segment.details.route_name }}: 
-                    {% for stop in segment.details.stops %}{{ stop }}{% if not forloop.last %} → {% endif %}{% endfor %})
-                </small>
-            {% else %}
-                {{ segment.type }}: {{ segment.time }} мин
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between">
+        <span>
+            <strong>Маршрут {{ forloop.counter }}</strong>
+            {% if route.source %}
+                <span class="badge bg-secondary">{{ route.source }}</span>
             {% endif %}
-        </li>
-        {% endfor %}
-    </ul>
+        </span>
+        <span class="badge bg-info">Время: {{ route.adjusted_time }} мин</span>
+    </div>
+    <div class="card-body">
+        <p>
+            <strong>Итоговое время:</strong> {{ route.adjusted_time }} мин 
+            (базовое: {{ route.base_time }} мин, пробки: ×{{ route.traffic_coef }})
+        </p>
+        <p><strong>Расстояние:</strong> {{ route.total_distance }} м</p>
+        
+        {% if route.traffic_delay %}
+        <div class="alert alert-warning">
+            <strong>Задержка из-за пробок:</strong> {{ route.traffic_delay }} мин
+        </div>
+        {% endif %}
+        
+        <h5>Этапы маршрута:</h5>
+        <ul class="list-group">
+            {% for segment in route.segments %}
+            <li class="list-group-item">
+                {% if segment.type == 'walk' %}
+                    <span class="badge bg-success">🚶 Пешком</span>
+                    {{ segment.time }} мин
+                    <small class="text-muted">– {{ segment.details.text }}</small>
+                {% elif segment.type == 'transport' %}
+                    <span class="badge bg-primary">🚌 Транспорт</span>
+                    {{ segment.time }} мин
+                    <small class="text-muted">
+                        – {{ segment.details.route_name }}
+                        {% if segment.details.transport_type %}
+                            ({{ segment.details.transport_type }})
+                        {% endif %}
+                        {% if segment.details.traffic_info %}
+                            <br>{{ segment.details.traffic_info }}
+                        {% endif %}
+                    </small>
+                {% elif segment.type == 'car' %}
+                    <span class="badge bg-warning">🚗 Автомобиль</span>
+                    {{ segment.time }} мин
+                    <small class="text-muted">
+                        – {{ segment.details.route_name }}
+                        {% if segment.details.distance %}
+                            ({{ segment.details.distance }})
+                        {% endif %}
+                        {% if segment.details.traffic_info %}
+                            <br>{{ segment.details.traffic_info }}
+                        {% endif %}
+                    </small>
+                {% else %}
+                    <span class="badge bg-secondary">{{ segment.type }}</span>
+                    {{ segment.time }} мин
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
 </div>
 {% endfor %}
 {% endif %}
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startInput = document.getElementById('start-point');
+    const endInput = document.getElementById('end-point');
+    
+    function setupAutocomplete(input) {
+        input.addEventListener('input', function(e) {
+            const query = e.target.value;
+            if (query.length < 2) return;
+            
+            fetch(`/api/autocomplete/?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Autocomplete results:', data);
+                    // Здесь можно реализовать отображение подсказок
+                })
+                .catch(error => console.error('Autocomplete error:', error));
+        });
+    }
+    
+    if (startInput) setupAutocomplete(startInput);
+    if (endInput) setupAutocomplete(endInput);
+});
+</script>

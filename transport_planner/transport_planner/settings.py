@@ -27,9 +27,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 # transport_planner/settings.py
-USE_REAL_API = False  # Переключатель!
+USE_REAL_API = True  # Переключатель!
 TOMTOM_API_KEY = 'aSstnazvjDP54WvnmImuZfZ1XUqWgDcP'
-TWOGIS_DEMO_KEY = '5ef601a4-d465-4d49-8a46-e8f62b1c159a'
+#TWOGIS_DEMO_KEY = '5ef601a4-d465-4d49-8a46-e8f62b1c159a'
 
 # Application definition
 
