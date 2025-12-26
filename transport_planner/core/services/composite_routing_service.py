@@ -1,70 +1,67 @@
+# core/services/composite_routing_service.py
 from django.conf import settings
 from core.models import ApiLog
 import time
 
 class CompositeRoutingService:
-    """Композитный сервис, который пытается использовать основной API, 
-       а при ошибке переключается на резервный"""
+    """Упрощенный сервис: использует TomTom, если включен, иначе заглушку"""
     
     def __init__(self, primary_service, fallback_service):
-        self.primary_service = primary_service
-        self.fallback_service = fallback_service
+        self.primary_service = primary_service  # Теперь это заглушка
+        self.fallback_service = fallback_service  # TomTom
     
     def get_routes(self, start_lat, start_lon, end_lat, end_lon):
         start_time = time.time()
+        
+        # Если USE_REAL_API = True, ПРЯМО используем TomTom (никакого 2GIS)
+        if getattr(settings, 'USE_REAL_API', False):
+            print(f"[DEBUG] USE_REAL_API=True, используем только TomTom")
+            try:
+                result = self.fallback_service.get_routes(
+                    start_lat, start_lon, end_lat, end_lon
+                )
+                response_time = (time.time() - start_time) * 1000
+                
+                # Логируем успешный запрос к TomTom
+                ApiLog.objects.create(
+                    provider='tomtom_route',
+                    request_params=f"{start_lat},{start_lon}->{end_lat},{end_lon}",
+                    response_status=200,
+                    response_time_ms=response_time,
+                    was_cached=False
+                )
+                return result
+                
+            except Exception as tomtom_error:
+                print(f"[DEBUG] TomTom API упал: {tomtom_error}")
+                # Если TomTom упал, сразу на заглушку (без попытки 2GIS)
+                ApiLog.objects.create(
+                    provider='tomtom_route',
+                    request_params=f"{start_lat},{start_lon}->{end_lat},{end_lon}",
+                    response_status=500,
+                    response_time_ms=(time.time() - start_time) * 1000,
+                    was_cached=False,
+                    error_message=str(tomtom_error)
+                )
+                
+                print(f"[DEBUG] Переключаемся на заглушку")
+                return self.primary_service.get_routes(start_lat, start_lon, end_lat, end_lon)
+        
+        # Если USE_REAL_API = False, сразу используем заглушку
+        print(f"[DEBUG] USE_REAL_API=False, используем заглушку")
         try:
-            result = self.primary_service.get_routes(
-                start_lat, start_lon, end_lat, end_lon
-            )
+            result = self.primary_service.get_routes(start_lat, start_lon, end_lat, end_lon)
             response_time = (time.time() - start_time) * 1000
+            
             ApiLog.objects.create(
-                provider='2gis_route',
+                provider='stub',
                 request_params=f"{start_lat},{start_lon}->{end_lat},{end_lon}",
                 response_status=200,
                 response_time_ms=response_time,
                 was_cached=False
             )
-            
             return result
             
-        except Exception as primary_error:
-            print(f"Основной API недоступен: {primary_error}. Переключаемся на резервный...")
-            ApiLog.objects.create(
-                provider='2gis_route',
-                request_params=f"{start_lat},{start_lon}->{end_lat},{end_lon}",
-                response_status=500,
-                response_time_ms=(time.time() - start_time) * 1000,
-                was_cached=False,
-                error_message=str(primary_error)
-            )
-            try:
-                backup_start_time = time.time()
-                result = self.fallback_service.get_routes(
-                    start_lat, start_lon, end_lat, end_lon
-                )
-                backup_response_time = (time.time() - backup_start_time) * 1000
-                
-                ApiLog.objects.create(
-                    provider='tomtom_route',
-                    request_params=f"{start_lat},{start_lon}->{end_lat},{end_lon}",
-                    response_status=200,
-                    response_time_ms=backup_response_time,
-                    was_cached=False
-                )
-                
-                return result
-                
-            except Exception as backup_error:
-                print(f"Резервный API тоже недоступен: {backup_error}")
-                ApiLog.objects.create(
-                    provider='tomtom_route',
-                    request_params=f"{start_lat},{start_lon}->{end_lat},{end_lon}",
-                    response_status=500,
-                    response_time_ms=(time.time() - backup_start_time) * 1000,
-                    was_cached=False,
-                    error_message=str(backup_error)
-                )
-                
-                from .routing_service import StubRoutingService
-                stub_service = StubRoutingService()
-                return stub_service.get_routes(start_lat, start_lon, end_lat, end_lon)
+        except Exception as stub_error:
+            print(f"[DEBUG] Заглушка тоже упала: {stub_error}")
+            raise Exception("Все сервисы маршрутизации недоступны")

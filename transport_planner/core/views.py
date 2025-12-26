@@ -5,13 +5,13 @@ from django.http import JsonResponse
 from datetime import datetime
 import time
 
-
+# Импорт моделей
 from .models import SearchHistory, CachedRoute, ApiLog
 
-
+# Импорт форм
 from .forms import RouteSearchForm
 
-
+# Импорт сервисов
 from .services.geocoding_service import StubGeocodingService, TomTomGeocodingService
 from .services.routing_service import StubRoutingService, TomTomRoutingService, TwoGisRoutingService
 from .services.cached_routing_service import CachedRoutingService
@@ -27,16 +27,20 @@ def home(request):
     form = RouteSearchForm()
     geocoded_points = {}
     error_message = None
+    selected_mode = 'car'  # Режим по умолчанию
 
     if request.method == 'GET' and 'start_point' in request.GET:
         form = RouteSearchForm(request.GET)
-
+        
         if form.is_valid():
             start_query = form.cleaned_data['start_point']
             end_query = form.cleaned_data['end_point']
             traffic_level = form.cleaned_data['traffic_level']
             
-
+            # Получаем выбранный режим передвижения
+            selected_mode = request.GET.get('travel_mode', 'car')
+            
+            # 1. ГЕОКОДИРОВАНИЕ с использованием TomTom API
             if getattr(settings, 'USE_REAL_API', False):
                 geocoder = TomTomGeocodingService(api_key=settings.TOMTOM_API_KEY)
             else:
@@ -68,27 +72,35 @@ def home(request):
                     }
                 }
 
-
+                # 2. МАРШРУТИЗАЦИЯ с композитным сервисом
                 try:
                     if getattr(settings, 'USE_REAL_API', False):
-                       
-                        tomtom_service = TomTomRoutingService(api_key=settings.TOMTOM_API_KEY)
-                        twogis_service = TwoGisRoutingService(api_key=getattr(settings, 'TWOGIS_DEMO_KEY', ''))
+                        print(f"[DEBUG VIEW] USE_REAL_API=True, создаем TomTom сервис")
+                        tomtom_service = TomTomRoutingService(
+                            api_key=settings.TOMTOM_API_KEY,
+                            travel_mode=selected_mode
+                        )
                         
+                        # Создаем заглушку как primary-сервис
+                        stub_service = StubRoutingService()
                         
+                        # Передаем в CompositeRoutingService: заглушка -> TomTom
+                        # Но логика внутри такова, что при USE_REAL_API=True TomTom будет приоритетным
                         routing_service = CompositeRoutingService(
-                            primary_service=twogis_service,
+                            primary_service=stub_service,
                             fallback_service=tomtom_service
                         )
                     else:
+                        print(f"[DEBUG VIEW] USE_REAL_API=False, используем только заглушку")
                         routing_service = StubRoutingService()
                     
-                  
+                    # Оборачиваем в кэширующий сервис
                     cached_service = CachedRoutingService(
                         routing_service=routing_service,
-                        provider_name="composite_route"
+                        provider_name=f"tomtom_{selected_mode}" if getattr(settings, 'USE_REAL_API', False) else "stub"
                     )
                     
+                    # Получаем маршруты (с кэшированием)
                     routes_data = cached_service.get_routes(
                         geocoded_points['start']['lat'],
                         geocoded_points['start']['lon'],
@@ -96,36 +108,52 @@ def home(request):
                         geocoded_points['end']['lon']
                     )
 
-                   
+                    # 3. УЧЕТ ПРОБОК (только для автомобильного режима)
                     traffic_service = StubTrafficService()
-                    traffic_coef = traffic_service.get_traffic_coefficient(
-                        traffic_level,
-                        datetime.now()
-                    )
-
                     
+                    # Для пеших и велосипедных маршрутов не учитываем пробки
+                    if selected_mode == 'car':
+                        traffic_coef = traffic_service.get_traffic_coefficient(
+                            traffic_level,
+                            datetime.now()
+                        )
+                    else:
+                        traffic_coef = 1.0  # Коэффициент пробок = 1 (без пробок)
+
+                    # 4. ОБРАБОТКА РЕЗУЛЬТАТОВ
                     if routes_data and 'result' in routes_data:
                         for route in routes_data['result']:
                             base_time = route.get('total_time', 0)
                             adjusted_time = base_time * traffic_coef
+                            
+                            # Добавляем информацию о режиме передвижения
+                            mode_display = {
+                                'car': {'name': '🚗 На машине', 'icon': '🚗'},
+                                'pedestrian': {'name': '🚶 Пешком', 'icon': '🚶'},
+                                'bicycle': {'name': '🚲 На велосипеде', 'icon': '🚲'}
+                            }.get(selected_mode, {'name': 'На машине', 'icon': '🚗'})
                             
                             route['adjusted_time'] = round(adjusted_time, 1)
                             route['traffic_coef'] = traffic_coef
                             route['base_time'] = base_time
                             route['start_address'] = geocoded_points['start']['address']
                             route['end_address'] = geocoded_points['end']['address']
+                            route['travel_mode'] = selected_mode
+                            route['mode_display'] = mode_display['name']
+                            route['mode_icon'] = mode_display['icon']
                             route['source'] = routes_data.get('source', 'unknown')
                             
-                          
+                            # Добавляем информацию о пробках в детали (только для авто)
                             for segment in route.get('segments', []):
-                                if segment['type'] == 'transport':
+                                if segment['type'] == 'transport' or segment['type'] == 'walk':
                                     if 'details' not in segment:
                                         segment['details'] = {}
-                                    segment['details']['traffic_coef'] = traffic_coef
+                                    if selected_mode == 'car' and traffic_coef > 1.0:
+                                        segment['details']['traffic_note'] = f"Учет пробок: ×{traffic_coef}"
                             
                             routes.append(route)
 
-                  
+                    # 5. СОХРАНЕНИЕ ИСТОРИИ ПОИСКА с указанием режима
                     SearchHistory.objects.create(
                         start_query=start_query,
                         end_query=end_query,
@@ -139,12 +167,14 @@ def home(request):
                     error_message = f'Ошибка при поиске маршрута: {str(e)}'
                     print(f"Ошибка маршрутизации: {e}")
 
+    # Передаем выбранный режим в контекст для сохранения в форме
     context = {
         'form': form,
         'routes': routes,
         'geocoded_points': geocoded_points,
         'error_message': error_message,
         'total_routes': len(routes),
+        'selected_mode': selected_mode,
         'use_real_api': getattr(settings, 'USE_REAL_API', False),
     }
 
@@ -196,6 +226,7 @@ def clear_cache_view(request):
     """
     from django.utils import timezone
     
+    # Проверяем, является ли пользователь администратором
     if not request.user.is_authenticated or not request.user.is_staff:
         return redirect('home')
     
@@ -203,10 +234,12 @@ def clear_cache_view(request):
     expired_count = 0
     
     if request.method == 'POST':
+        # Удаляем все устаревшие записи кэша
         expired_count = CachedRoute.objects.filter(
             expires_at__lt=timezone.now()
         ).delete()[0]
         
+        # Или удаляем все записи
         if 'clear_all' in request.POST:
             all_count = CachedRoute.objects.all().delete()[0]
             message = f'Удалено всех записей: {all_count}'
@@ -225,7 +258,7 @@ def api_status(request):
     """
     from django.utils import timezone
     
-
+    # Статистика за последний час
     hour_ago = timezone.now() - timezone.timedelta(hours=1)
     
     stats = {

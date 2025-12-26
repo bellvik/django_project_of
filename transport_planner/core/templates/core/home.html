@@ -35,6 +35,7 @@
 </div>
 {% endif %}
 
+<!-- Вставьте в core/templates/core/home.html, где отображаются маршруты -->
 {% if routes %}
 <h3 class="mt-4">Найдено вариантов: {{ routes|length }}</h3>
 
@@ -42,23 +43,28 @@
 <div class="card mt-3">
     <div class="card-header d-flex justify-content-between">
         <span>
-            <strong>Маршрут {{ forloop.counter }}</strong>
+            <strong>Маршрут {{ forloop.counter }} {{ route.mode_icon }}</strong>
+            <span class="badge bg-secondary">{{ route.mode_display }}</span>
             {% if route.source %}
-                <span class="badge bg-secondary">{{ route.source }}</span>
+                <span class="badge bg-info">{{ route.source }}</span>
             {% endif %}
         </span>
-        <span class="badge bg-info">Время: {{ route.adjusted_time }} мин</span>
+        <span class="badge bg-primary">Время: {{ route.adjusted_time }} мин</span>
     </div>
     <div class="card-body">
         <p>
             <strong>Итоговое время:</strong> {{ route.adjusted_time }} мин 
-            (базовое: {{ route.base_time }} мин, пробки: ×{{ route.traffic_coef }})
+            {% if route.travel_mode == 'car' %}
+                (базовое: {{ route.base_time }} мин, пробки: ×{{ route.traffic_coef }})
+            {% else %}
+                (пеший/велосипедный маршрут)
+            {% endif %}
         </p>
-        <p><strong>Расстояние:</strong> {{ route.total_distance }} м</p>
+        <p><strong>Расстояние:</strong> {{ route.total_distance }} м ({{ route.total_distance|divisibleby:1000|yesno:"км,м" }})</p>
         
-        {% if route.traffic_delay %}
+        {% if route.travel_mode == 'car' and route.traffic_coef > 1.0 %}
         <div class="alert alert-warning">
-            <strong>Задержка из-за пробок:</strong> {{ route.traffic_delay }} мин
+            <strong>Задержка из-за пробок:</strong> {{ route.base_time|floatformat:0 }} мин × {{ route.traffic_coef }} = {{ route.adjusted_time|floatformat:0 }} мин
         </div>
         {% endif %}
         
@@ -69,29 +75,23 @@
                 {% if segment.type == 'walk' %}
                     <span class="badge bg-success">🚶 Пешком</span>
                     {{ segment.time }} мин
-                    <small class="text-muted">– {{ segment.details.text }}</small>
+                    <small class="text-muted">– {{ segment.details.text|default:"Пеший участок" }}</small>
                 {% elif segment.type == 'transport' %}
-                    <span class="badge bg-primary">🚌 Транспорт</span>
+                    {% if route.travel_mode == 'car' %}
+                        <span class="badge bg-warning">🚗 Автомобиль</span>
+                    {% elif route.travel_mode == 'bicycle' %}
+                        <span class="badge bg-info">🚲 Велосипед</span>
+                    {% else %}
+                        <span class="badge bg-primary">🚌 Транспорт</span>
+                    {% endif %}
                     {{ segment.time }} мин
                     <small class="text-muted">
-                        – {{ segment.details.route_name }}
-                        {% if segment.details.transport_type %}
-                            ({{ segment.details.transport_type }})
-                        {% endif %}
-                        {% if segment.details.traffic_info %}
-                            <br>{{ segment.details.traffic_info }}
-                        {% endif %}
-                    </small>
-                {% elif segment.type == 'car' %}
-                    <span class="badge bg-warning">🚗 Автомобиль</span>
-                    {{ segment.time }} мин
-                    <small class="text-muted">
-                        – {{ segment.details.route_name }}
+                        – {{ segment.details.route_name|default:"Основной участок" }}
                         {% if segment.details.distance %}
                             ({{ segment.details.distance }})
                         {% endif %}
-                        {% if segment.details.traffic_info %}
-                            <br>{{ segment.details.traffic_info }}
+                        {% if segment.details.traffic_note %}
+                            <br>{{ segment.details.traffic_note }}
                         {% endif %}
                     </small>
                 {% else %}

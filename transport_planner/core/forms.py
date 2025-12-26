@@ -1,3 +1,4 @@
+# core/forms.py
 from django import forms
 
 class RouteSearchForm(forms.Form):
@@ -29,4 +30,15 @@ class RouteSearchForm(forms.Form):
             ('heavy', 'Сильные (коэф. 1.7)')
         ],
         widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    travel_mode = forms.ChoiceField(
+        label='Тип маршрута',
+        choices=[
+            ('car', '🚗 На машине (с пробками)'),
+            ('pedestrian', '🚶 Пешком'),
+            ('bicycle', '🚲 На велосипеде')
+        ],
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        initial='car'  # Значение по умолчанию
     )
