@@ -21,16 +21,7 @@ class RouteSearchForm(forms.Form):
             'id': 'end-point'
         })
     )
-    
-    traffic_level = forms.ChoiceField(
-        label='Уровень пробок',
-        choices=[
-            ('light', 'Легкие (коэф. 1.0)'),
-            ('medium', 'Средние (коэф. 1.3)'),
-            ('heavy', 'Сильные (коэф. 1.7)')
-        ],
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
+  
     
     travel_mode = forms.ChoiceField(
         label='Тип маршрута',

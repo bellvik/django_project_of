@@ -1,4 +1,40 @@
+<style>
+    /* Добавляем отступ снизу для всех полей формы */
+    #route-form .form-group {
+        margin-bottom: 1.5rem;
+        position: relative; /* Это ключевое для позиционирования выпадающего списка */
+    }
 
+    .autocomplete-items {
+        position: absolute;
+        border: 1px solid #d4d4d4;
+        border-top: none; /* Убираем верхнюю границу, чтобы плавно соединяться с полем */
+        z-index: 99; /* Поверх других элементов */
+        top: 100%; /* Прямо под полем ввода */
+        left: 0;
+        right: 0;
+        max-height: 200px;
+        overflow-y: auto;
+        background-color: #fff;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Легкая тень для объема */
+    }
+    .autocomplete-items div {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f1f1;
+        font-size: 0.9rem;
+    }
+    .autocomplete-items div:hover {
+        background-color: #007bff; /* Цвет Bootstrap primary */
+        color: white;
+    }
+    .autocomplete-items div strong {
+        font-weight: normal;
+    }
+    .autocomplete-items:empty {
+        display: none;
+    }
+</style>
 <h2>Планировщик поездок ЕкбТранспорт+</h2>
 
 {% if use_real_api %}
@@ -11,8 +47,29 @@
 </div>
 {% endif %}
 
+
 <form method="get" id="route-form">
-    {{ form.as_p }}
+     <div class="form-group autocomplete"> <!-- Добавляем класс autocomplete -->
+        <label for="start-point">{{ form.start_point.label }}</label>
+        {{ form.start_point }}
+        <!-- Контейнер для подсказок ВНУТРИ элемента с position: relative -->
+        <div id="start-autocomplete" class="autocomplete-items"></div>
+    </div>
+
+    <!-- Поле "Куда" с автодополнением -->
+    <div class="form-group autocomplete"> <!-- Добавляем класс autocomplete -->
+        <label for="end-point">{{ form.end_point.label }}</label>
+        {{ form.end_point }}
+        <!-- Контейнер для подсказок ВНУТРИ элемента с position: relative -->
+        <div id="end-autocomplete" class="autocomplete-items"></div>
+    </div>
+
+    <!-- Поле выбора типа маршрута -->
+    <div class="form-group">
+        <label for="travel-mode">{{ form.travel_mode.label }}</label>
+        {{ form.travel_mode }}
+    </div>
+
     <button type="submit" class="btn btn-primary">Найти маршрут</button>
 </form>
 
@@ -35,7 +92,6 @@
 </div>
 {% endif %}
 
-<!-- Вставьте в core/templates/core/home.html, где отображаются маршруты -->
 {% if routes %}
 <h3 class="mt-4">Найдено вариантов: {{ routes|length }}</h3>
 
@@ -49,24 +105,26 @@
                 <span class="badge bg-info">{{ route.source }}</span>
             {% endif %}
         </span>
-        <span class="badge bg-primary">Время: {{ route.adjusted_time }} мин</span>
+        <!-- 1. Заменяем adjusted_time на total_time -->
+        <span class="badge bg-primary">Время: {{ route.total_time }} мин</span>
     </div>
     <div class="card-body">
+        <!-- 2. Обновляем вывод времени и добавляем информацию о задержке -->
         <p>
-            <strong>Итоговое время:</strong> {{ route.adjusted_time }} мин 
-            {% if route.travel_mode == 'car' %}
-                (базовое: {{ route.base_time }} мин, пробки: ×{{ route.traffic_coef }})
-            {% else %}
-                (пеший/велосипедный маршрут)
+            <strong>Общее время в пути:</strong> {{ route.total_time }} мин
+            {% if route.travel_mode == 'car' and route.traffic_delay > 0 %}
+                <small class="text-muted">(задержка из-за пробок: +{{ route.traffic_delay }} мин)</small>
             {% endif %}
         </p>
         <p><strong>Расстояние:</strong> {{ route.total_distance }} м ({{ route.total_distance|divisibleby:1000|yesno:"км,м" }})</p>
         
-        {% if route.travel_mode == 'car' and route.traffic_coef > 1.0 %}
+        <!-- 3. ПОЛНОСТЬЮ ЗАМЕНЯЕМ этот сломанный блок на новый -->
+        {% if route.travel_mode == 'car' and route.traffic_delay > 0 %}
         <div class="alert alert-warning">
-            <strong>Задержка из-за пробок:</strong> {{ route.base_time|floatformat:0 }} мин × {{ route.traffic_coef }} = {{ route.adjusted_time|floatformat:0 }} мин
+            <strong>Внимание, пробки!</strong> Маршрут построен с учетом текущей дорожной ситуации.
         </div>
         {% endif %}
+        <!-- Конец нового блока -->
         
         <h5>Этапы маршрута:</h5>
         <ul class="list-group">
@@ -90,9 +148,6 @@
                         {% if segment.details.distance %}
                             ({{ segment.details.distance }})
                         {% endif %}
-                        {% if segment.details.traffic_note %}
-                            <br>{{ segment.details.traffic_note }}
-                        {% endif %}
                     </small>
                 {% else %}
                     <span class="badge bg-secondary">{{ segment.type }}</span>
@@ -106,28 +161,83 @@
 {% endfor %}
 {% endif %}
 
-
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const startInput = document.getElementById('start-point');
-    const endInput = document.getElementById('end-point');
-    
-    function setupAutocomplete(input) {
-        input.addEventListener('input', function(e) {
-            const query = e.target.value;
-            if (query.length < 2) return;
-            
-            fetch(`/api/autocomplete/?q=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Autocomplete results:', data);
-                    // Здесь можно реализовать отображение подсказок
-                })
-                .catch(error => console.error('Autocomplete error:', error));
-        });
+function setupAutocomplete(inputId, itemsContainerId) {
+    const input = document.getElementById(inputId);
+    const itemsContainer = document.getElementById(itemsContainerId);
+
+    // ОТЛАДКА: Проверяем, найден ли элемент
+    if (!input) {
+        console.error('Не найден элемент input с id:', inputId);
+        return;
     }
-    
-    if (startInput) setupAutocomplete(startInput);
-    if (endInput) setupAutocomplete(endInput);
+    if (!itemsContainer) {
+        console.error('Не найден элемент container с id:', itemsContainerId);
+        return;
+    }
+
+    console.log('Инициализация автодополнения для:', inputId);
+
+    input.addEventListener('input', function(e) {
+        const query = this.value.trim();
+        console.log('Ввод:', query);
+
+        // Очищаем старые подсказки
+        itemsContainer.innerHTML = '';
+
+        if (query.length < 2) {
+            console.log('Запрос слишком короткий');
+            return;
+        }
+
+        // Дебаунсинг
+        clearTimeout(window.autocompleteTimeout);
+        window.autocompleteTimeout = setTimeout(() => {
+            console.log('Отправка запроса для:', query);
+            fetch(`/api/autocomplete/?q=${encodeURIComponent(query)}`)
+                .then(response => {
+                    console.log('Ответ получен, статус:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Данные от API:', data);
+                    if (data.results && data.results.length > 0) {
+                        showAutocompleteItems(data.results, itemsContainer, input);
+                    } else {
+                        console.log('Нет результатов');
+                    }
+                })
+                .catch(error => console.error('Ошибка автодополнения:', error));
+        }, 300);
+    });
+
+    function showAutocompleteItems(results, container, input) {
+        results.forEach(item => {
+            const itemElement = document.createElement('div');
+            // Используем .label, так как он уже содержит полный адрес
+            itemElement.textContent = item.label; // Меняем innerHTML на textContent для безопасности
+            itemElement.addEventListener('click', function() {
+                console.log('Выбран вариант:', item.value);
+                input.value = item.value;
+                container.innerHTML = ''; // Скрываем список
+            });
+            container.appendChild(itemElement);
+        });
+        console.log('Показано подсказок:', results.length);
+    }
+
+    // Закрываем список при клике вне его
+    document.addEventListener('click', function(e) {
+        if (e.target !== input && e.target !== itemsContainer) {
+            itemsContainer.innerHTML = '';
+        }
+    });
+}
+
+// Инициализируем после загрузки DOM
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM загружен, запуск автодополнения...');
+    setupAutocomplete('start-point', 'start-autocomplete');
+    setupAutocomplete('end-point', 'end-autocomplete');
 });
 </script>

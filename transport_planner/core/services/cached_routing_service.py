@@ -15,8 +15,11 @@ class CachedRoutingService:
     def get_routes(self, start_lat, start_lon, end_lat, end_lon):
         
         cache_key_data = f"{start_lat}:{start_lon}:{end_lat}:{end_lon}"
+        if hasattr(self.routing_service, 'travel_mode'):
+            cache_key_data += f":{self.routing_service.travel_mode}"
         hash_key = hashlib.md5(cache_key_data.encode()).hexdigest()
         print(f"[DEBUG CachedRoutingService] Ключ кэша: {hash_key}")
+        print(f"[DEBUG CACHE KEY] Формируем ключ из данных: {cache_key_data}")
         
        
         cache_expiry = timezone.now() - timedelta(minutes=30)

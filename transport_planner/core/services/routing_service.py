@@ -89,6 +89,7 @@ class TomTomRoutingService(BaseRoutingService):
 
     def _parse_tomtom_response(self, api_data, travel_mode):
         """Преобразует ответ TomTom API в наш формат с учетом типа маршрута"""
+        print(f"[DEBUG TOMTOM RESPONSE] Сырой ответ API для режима '{travel_mode}': {api_data}")
         parsed_response = {
             "result": [],
             "source": "tomtom",

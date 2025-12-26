@@ -35,7 +35,7 @@ def home(request):
         if form.is_valid():
             start_query = form.cleaned_data['start_point']
             end_query = form.cleaned_data['end_point']
-            traffic_level = form.cleaned_data['traffic_level']
+
             
             # Получаем выбранный режим передвижения
             selected_mode = request.GET.get('travel_mode', 'car')
@@ -75,24 +75,28 @@ def home(request):
                 # 2. МАРШРУТИЗАЦИЯ с композитным сервисом
                 try:
                     if getattr(settings, 'USE_REAL_API', False):
-                        print(f"[DEBUG VIEW] USE_REAL_API=True, создаем TomTom сервис")
+                        print(f"[DEBUG] Используем TomTom напрямую, режим: {selected_mode}")
+                        
+                        # 1. Создаем реальный TomTom сервис с нужным режимом
                         tomtom_service = TomTomRoutingService(
                             api_key=settings.TOMTOM_API_KEY,
-                            travel_mode=selected_mode
+                            travel_mode=selected_mode  # передаем режим сюда
                         )
                         
-                        # Создаем заглушку как primary-сервис
-                        stub_service = StubRoutingService()
-                        
-                        # Передаем в CompositeRoutingService: заглушка -> TomTom
-                        # Но логика внутри такова, что при USE_REAL_API=True TomTom будет приоритетным
-                        routing_service = CompositeRoutingService(
-                            primary_service=stub_service,
-                            fallback_service=tomtom_service
+                        # 2. Сразу оборачиваем его в кэширующий сервис (минуя CompositeRoutingService)
+                        routing_service = CachedRoutingService(
+                            routing_service=tomtom_service,  # передаем реальный TomTom сервис
+                            provider_name=f"tomtom_{selected_mode}"
                         )
+                        
                     else:
-                        print(f"[DEBUG VIEW] USE_REAL_API=False, используем только заглушку")
-                        routing_service = StubRoutingService()
+                        print(f"[DEBUG] Используем заглушку")
+                        # Для заглушки используем StubRoutingService
+                        stub_service = StubRoutingService()
+                        routing_service = CachedRoutingService(
+                            routing_service=stub_service,
+                            provider_name="stub"
+                        )
                     
                     # Оборачиваем в кэширующий сервис
                     cached_service = CachedRoutingService(
@@ -109,22 +113,17 @@ def home(request):
                     )
 
                     # 3. УЧЕТ ПРОБОК (только для автомобильного режима)
-                    traffic_service = StubTrafficService()
+                    
                     
                     # Для пеших и велосипедных маршрутов не учитываем пробки
-                    if selected_mode == 'car':
-                        traffic_coef = traffic_service.get_traffic_coefficient(
-                            traffic_level,
-                            datetime.now()
-                        )
-                    else:
-                        traffic_coef = 1.0  # Коэффициент пробок = 1 (без пробок)
+                     # Коэффициент пробок = 1 (без пробок)
 
                     # 4. ОБРАБОТКА РЕЗУЛЬТАТОВ
                     if routes_data and 'result' in routes_data:
                         for route in routes_data['result']:
-                            base_time = route.get('total_time', 0)
-                            adjusted_time = base_time * traffic_coef
+                            
+                            route['total_time'] = route.get('total_time', 0)  # Время уже включает пробки
+                            route['traffic_delay'] = route.get('traffic_delay', 0)
                             
                             # Добавляем информацию о режиме передвижения
                             mode_display = {
@@ -133,9 +132,9 @@ def home(request):
                                 'bicycle': {'name': '🚲 На велосипеде', 'icon': '🚲'}
                             }.get(selected_mode, {'name': 'На машине', 'icon': '🚗'})
                             
-                            route['adjusted_time'] = round(adjusted_time, 1)
-                            route['traffic_coef'] = traffic_coef
-                            route['base_time'] = base_time
+                            
+                           
+                            
                             route['start_address'] = geocoded_points['start']['address']
                             route['end_address'] = geocoded_points['end']['address']
                             route['travel_mode'] = selected_mode
@@ -148,8 +147,7 @@ def home(request):
                                 if segment['type'] == 'transport' or segment['type'] == 'walk':
                                     if 'details' not in segment:
                                         segment['details'] = {}
-                                    if selected_mode == 'car' and traffic_coef > 1.0:
-                                        segment['details']['traffic_note'] = f"Учет пробок: ×{traffic_coef}"
+                                   
                             
                             routes.append(route)
 
