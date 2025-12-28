@@ -7,13 +7,13 @@ class CompositeRoutingService:
     """Упрощенный сервис: использует TomTom, если включен, иначе заглушку"""
     
     def __init__(self, primary_service, fallback_service):
-        self.primary_service = primary_service  # Теперь это заглушка
-        self.fallback_service = fallback_service  # TomTom
+        self.primary_service = primary_service 
+        self.fallback_service = fallback_service  
     
     def get_routes(self, start_lat, start_lon, end_lat, end_lon):
         start_time = time.time()
         
-        # Если USE_REAL_API = True, ПРЯМО используем TomTom (никакого 2GIS)
+        
         if getattr(settings, 'USE_REAL_API', False):
             print(f"[DEBUG] USE_REAL_API=True, используем только TomTom")
             try:
@@ -22,7 +22,7 @@ class CompositeRoutingService:
                 )
                 response_time = (time.time() - start_time) * 1000
                 
-                # Логируем успешный запрос к TomTom
+               
                 ApiLog.objects.create(
                     provider='tomtom_route',
                     request_params=f"{start_lat},{start_lon}->{end_lat},{end_lon}",
@@ -34,7 +34,7 @@ class CompositeRoutingService:
                 
             except Exception as tomtom_error:
                 print(f"[DEBUG] TomTom API упал: {tomtom_error}")
-                # Если TomTom упал, сразу на заглушку (без попытки 2GIS)
+                
                 ApiLog.objects.create(
                     provider='tomtom_route',
                     request_params=f"{start_lat},{start_lon}->{end_lat},{end_lon}",
@@ -47,7 +47,7 @@ class CompositeRoutingService:
                 print(f"[DEBUG] Переключаемся на заглушку")
                 return self.primary_service.get_routes(start_lat, start_lon, end_lat, end_lon)
         
-        # Если USE_REAL_API = False, сразу используем заглушку
+       
         print(f"[DEBUG] USE_REAL_API=False, используем заглушку")
         try:
             result = self.primary_service.get_routes(start_lat, start_lon, end_lat, end_lon)

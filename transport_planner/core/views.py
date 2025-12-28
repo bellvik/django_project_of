@@ -4,7 +4,8 @@ from django.conf import settings
 from django.http import JsonResponse
 from datetime import datetime
 import time
-
+from django.core.serializers.json import DjangoJSONEncoder
+import json
 # Импорт моделей
 from .models import SearchHistory, CachedRoute, ApiLog
 
@@ -164,12 +165,15 @@ def home(request):
                 except Exception as e:
                     error_message = f'Ошибка при поиске маршрута: {str(e)}'
                     print(f"Ошибка маршрутизации: {e}")
-
+    routes_json = json.dumps(routes, cls=DjangoJSONEncoder, ensure_ascii=False)
+    geocoded_points_json = json.dumps(geocoded_points, cls=DjangoJSONEncoder, ensure_ascii=False)
     # Передаем выбранный режим в контекст для сохранения в форме
     context = {
         'form': form,
         'routes': routes,
+        'routes_json': routes_json, 
         'geocoded_points': geocoded_points,
+        'geocoded_points_json': geocoded_points_json,
         'error_message': error_message,
         'total_routes': len(routes),
         'selected_mode': selected_mode,

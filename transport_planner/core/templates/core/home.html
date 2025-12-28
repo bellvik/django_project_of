@@ -1,243 +1,539 @@
-<style>
-    /* Добавляем отступ снизу для всех полей формы */
-    #route-form .form-group {
-        margin-bottom: 1.5rem;
-        position: relative; /* Это ключевое для позиционирования выпадающего списка */
-    }
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ЕкбТранспорт+ - Планировщик поездок</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    
+    <style>
+        #route-form .form-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
 
-    .autocomplete-items {
-        position: absolute;
-        border: 1px solid #d4d4d4;
-        border-top: none; /* Убираем верхнюю границу, чтобы плавно соединяться с полем */
-        z-index: 99; /* Поверх других элементов */
-        top: 100%; /* Прямо под полем ввода */
-        left: 0;
-        right: 0;
-        max-height: 200px;
-        overflow-y: auto;
-        background-color: #fff;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Легкая тень для объема */
-    }
-    .autocomplete-items div {
-        padding: 8px 12px;
-        cursor: pointer;
-        border-bottom: 1px solid #f1f1f1;
-        font-size: 0.9rem;
-    }
-    .autocomplete-items div:hover {
-        background-color: #007bff; /* Цвет Bootstrap primary */
-        color: white;
-    }
-    .autocomplete-items div strong {
-        font-weight: normal;
-    }
-    .autocomplete-items:empty {
-        display: none;
-    }
-</style>
-<h2>Планировщик поездок ЕкбТранспорт+</h2>
-
-{% if use_real_api %}
-<div class="alert alert-info">
-    <strong>Режим реальных API:</strong> Используется TomTom для геокодирования и маршрутизации
-</div>
-{% else %}
-<div class="alert alert-warning">
-    <strong>Режим заглушек:</strong> Используются тестовые данные
-</div>
-{% endif %}
-
-
-<form method="get" id="route-form">
-     <div class="form-group autocomplete"> <!-- Добавляем класс autocomplete -->
-        <label for="start-point">{{ form.start_point.label }}</label>
-        {{ form.start_point }}
-        <!-- Контейнер для подсказок ВНУТРИ элемента с position: relative -->
-        <div id="start-autocomplete" class="autocomplete-items"></div>
-    </div>
-
-    <!-- Поле "Куда" с автодополнением -->
-    <div class="form-group autocomplete"> <!-- Добавляем класс autocomplete -->
-        <label for="end-point">{{ form.end_point.label }}</label>
-        {{ form.end_point }}
-        <!-- Контейнер для подсказок ВНУТРИ элемента с position: relative -->
-        <div id="end-autocomplete" class="autocomplete-items"></div>
-    </div>
-
-    <!-- Поле выбора типа маршрута -->
-    <div class="form-group">
-        <label for="travel-mode">{{ form.travel_mode.label }}</label>
-        {{ form.travel_mode }}
-    </div>
-
-    <button type="submit" class="btn btn-primary">Найти маршрут</button>
-</form>
-
-{% if error_message %}
-<div class="alert alert-danger">{{ error_message }}</div>
-{% endif %}
-
-{% if geocoded_points %}
-<div class="card mt-3">
-    <div class="card-header">
-        <strong>Найденные точки:</strong>
-    </div>
-    <div class="card-body">
-        <p><strong>Откуда:</strong> {{ geocoded_points.start.address }} 
-        ({{ geocoded_points.start.lat|floatformat:4 }}, {{ geocoded_points.start.lon|floatformat:4 }})</p>
-        <p><strong>Куда:</strong> {{ geocoded_points.end.address }}
-        ({{ geocoded_points.end.lat|floatformat:4 }}, {{ geocoded_points.end.lon|floatformat:4 }})</p>
-        <small class="text-muted">Источник: {{ geocoded_points.start.source }}</small>
-    </div>
-</div>
-{% endif %}
-
-{% if routes %}
-<h3 class="mt-4">Найдено вариантов: {{ routes|length }}</h3>
-
-{% for route in routes %}
-<div class="card mt-3">
-    <div class="card-header d-flex justify-content-between">
-        <span>
-            <strong>Маршрут {{ forloop.counter }} {{ route.mode_icon }}</strong>
-            <span class="badge bg-secondary">{{ route.mode_display }}</span>
-            {% if route.source %}
-                <span class="badge bg-info">{{ route.source }}</span>
-            {% endif %}
-        </span>
-        <!-- 1. Заменяем adjusted_time на total_time -->
-        <span class="badge bg-primary">Время: {{ route.total_time }} мин</span>
-    </div>
-    <div class="card-body">
-        <!-- 2. Обновляем вывод времени и добавляем информацию о задержке -->
-        <p>
-            <strong>Общее время в пути:</strong> {{ route.total_time }} мин
-            {% if route.travel_mode == 'car' and route.traffic_delay > 0 %}
-                <small class="text-muted">(задержка из-за пробок: +{{ route.traffic_delay }} мин)</small>
-            {% endif %}
-        </p>
-        <p><strong>Расстояние:</strong> {{ route.total_distance }} м ({{ route.total_distance|divisibleby:1000|yesno:"км,м" }})</p>
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid #d4d4d4;
+            border-top: none;
+            z-index: 1000;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .autocomplete-items div {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f1f1;
+            font-size: 0.9rem;
+        }
+        .autocomplete-items div:hover {
+            background-color: #007bff;
+            color: white;
+        }
+        .autocomplete-items:empty {
+            display: none;
+        }
         
-        <!-- 3. ПОЛНОСТЬЮ ЗАМЕНЯЕМ этот сломанный блок на новый -->
-        {% if route.travel_mode == 'car' and route.traffic_delay > 0 %}
-        <div class="alert alert-warning">
-            <strong>Внимание, пробки!</strong> Маршрут построен с учетом текущей дорожной ситуации.
+        .route-details {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .segment-item {
+            padding: 8px 0;
+            border-bottom: 1px dashed #dee2e6;
+        }
+        
+        .segment-item:last-child {
+            border-bottom: none;
+        }
+        
+        .badge-transport {
+            font-size: 0.8em;
+            padding: 4px 8px;
+        }
+        
+        /* Стили для карты */
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        /* Адаптивность карты */
+        @media (max-width: 768px) {
+            #map {
+                height: 350px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            #map {
+                height: 300px;
+            }
+        }
+        
+        /* Улучшение аккордеона для взаимодействия с картой */
+        .accordion-button:not(.collapsed) {
+            background-color: #e7f1ff;
+        }
+        
+        /* Иконки для инструкций */
+        .step-icon {
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body class="container mt-4">
+    <!-- Заголовок и оповещения -->
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-3">🗺️ ЕкбТранспорт+ - Планировщик поездок</h1>
+            
+            {% if use_real_api %}
+            <div class="alert alert-info">
+                <strong>Режим реальных API:</strong> Используется TomTom для геокодирования и маршрутизации
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                <strong>Режим заглушек:</strong> Используются тестовые данные
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
-        <!-- Конец нового блока -->
-        
-        <h5>Этапы маршрута:</h5>
-        <ul class="list-group">
-            {% for segment in route.segments %}
-            <li class="list-group-item">
-                {% if segment.type == 'walk' %}
-                    <span class="badge bg-success">🚶 Пешком</span>
-                    {{ segment.time }} мин
-                    <small class="text-muted">– {{ segment.details.text|default:"Пеший участок" }}</small>
-                {% elif segment.type == 'transport' %}
-                    {% if route.travel_mode == 'car' %}
-                        <span class="badge bg-warning">🚗 Автомобиль</span>
-                    {% elif route.travel_mode == 'bicycle' %}
-                        <span class="badge bg-info">🚲 Велосипед</span>
-                    {% else %}
-                        <span class="badge bg-primary">🚌 Транспорт</span>
-                    {% endif %}
-                    {{ segment.time }} мин
-                    <small class="text-muted">
-                        – {{ segment.details.route_name|default:"Основной участок" }}
-                        {% if segment.details.distance %}
-                            ({{ segment.details.distance }})
-                        {% endif %}
-                    </small>
-                {% else %}
-                    <span class="badge bg-secondary">{{ segment.type }}</span>
-                    {{ segment.time }} мин
-                {% endif %}
-            </li>
-            {% endfor %}
-        </ul>
     </div>
-</div>
-{% endfor %}
-{% endif %}
 
-<script>
-function setupAutocomplete(inputId, itemsContainerId) {
-    const input = document.getElementById(inputId);
-    const itemsContainer = document.getElementById(itemsContainerId);
+    <!-- Форма поиска и результаты -->
+    <div class="row">
+        <!-- Левая колонка: форма поиска -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">🔍 Поиск маршрута</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" id="route-form">
+                        <div class="form-group autocomplete">
+                            <label for="start-point" class="form-label">{{ form.start_point.label }}</label>
+                            {{ form.start_point }}
+                            <div id="start-autocomplete" class="autocomplete-items"></div>
+                        </div>
 
-    // ОТЛАДКА: Проверяем, найден ли элемент
-    if (!input) {
-        console.error('Не найден элемент input с id:', inputId);
-        return;
-    }
-    if (!itemsContainer) {
-        console.error('Не найден элемент container с id:', itemsContainerId);
-        return;
-    }
+                        <div class="form-group autocomplete">
+                            <label for="end-point" class="form-label">{{ form.end_point.label }}</label>
+                            {{ form.end_point }}
+                            <div id="end-autocomplete" class="autocomplete-items"></div>
+                        </div>
 
-    console.log('Инициализация автодополнения для:', inputId);
+                        <div class="form-group">
+                            <label for="travel-mode" class="form-label">{{ form.travel_mode.label }}</label>
+                            {{ form.travel_mode }}
+                        </div>
 
-    input.addEventListener('input', function(e) {
-        const query = this.value.trim();
-        console.log('Ввод:', query);
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-route"></i> Найти маршрут
+                        </button>
+                    </form>
 
-        // Очищаем старые подсказки
-        itemsContainer.innerHTML = '';
+                    {% if error_message %}
+                    <div class="alert alert-danger mt-3">{{ error_message }}</div>
+                    {% endif %}
 
-        if (query.length < 2) {
-            console.log('Запрос слишком короткий');
-            return;
-        }
+                    {% if geocoded_points %}
+                    <div class="card mt-3">
+                        <div class="card-header bg-light">
+                            <strong>📍 Найденные точки</strong>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Откуда:</strong> {{ geocoded_points.start.address }}</p>
+                            <p><strong>Куда:</strong> {{ geocoded_points.end.address }}</p>
+                            <small class="text-muted">Источник данных: {{ geocoded_points.start.source }}</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
 
-        // Дебаунсинг
-        clearTimeout(window.autocompleteTimeout);
-        window.autocompleteTimeout = setTimeout(() => {
-            console.log('Отправка запроса для:', query);
-            fetch(`/api/autocomplete/?q=${encodeURIComponent(query)}`)
-                .then(response => {
-                    console.log('Ответ получен, статус:', response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Данные от API:', data);
-                    if (data.results && data.results.length > 0) {
-                        showAutocompleteItems(data.results, itemsContainer, input);
-                    } else {
-                        console.log('Нет результатов');
+        <!-- Правая колонка: маршруты -->
+        <div class="col-lg-7">
+            {% if routes %}
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">📋 Найдено маршрутов: {{ routes|length }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="routesAccordion">
+                        {% for route in routes %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+                                <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" 
+                                        type="button" data-bs-toggle="collapse" 
+                                        data-bs-target="#collapse{{ forloop.counter }}" 
+                                        aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" 
+                                        aria-controls="collapse{{ forloop.counter }}"
+                                        onclick="showRouteOnMap({{ forloop.counter0 }})">
+                                    <div class="d-flex justify-content-between align-items-center w-100">
+                                        <div>
+                                            <span class="me-2">{{ route.icon }}</span>
+                                            <strong>Маршрут {{ forloop.counter }}</strong>
+                                            <span class="badge bg-secondary ms-2">{{ route.mode_display }}</span>
+                                            {% if route.source %}
+                                                <span class="badge bg-info ms-1">{{ route.source }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-primary">⏱️ {{ route.total_time }} мин</span>
+                                            <span class="badge bg-success ms-1">📏 {{ route.total_distance|floatformat:0 }} м</span>
+                                        </div>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapse{{ forloop.counter }}" 
+                                 class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" 
+                                 aria-labelledby="heading{{ forloop.counter }}" 
+                                 data-bs-parent="#routesAccordion">
+                                <div class="accordion-body">
+                                    <!-- Детали маршрута -->
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <h6>📊 Общая информация:</h6>
+                                            <ul class="list-unstyled">
+                                                <li><strong>Время в пути:</strong> {{ route.total_time }} мин</li>
+                                                <li><strong>Расстояние:</strong> {{ route.total_distance|floatformat:0 }} м</li>
+                                                {% if route.travel_mode == 'car' and route.traffic_delay > 0 %}
+                                                <li><strong>Задержка из-за пробок:</strong> <span class="text-warning">+{{ route.traffic_delay }} мин</span></li>
+                                                {% endif %}
+                                                <li><strong>Тип маршрута:</strong> {{ route.mode_display }}</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>📍 Точки маршрута:</h6>
+                                            <ul class="list-unstyled">
+                                                <li><strong>Начало:</strong> {{ route.start_address|default:"Не указано" }}</li>
+                                                <li><strong>Конец:</strong> {{ route.end_address|default:"Не указано" }}</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Этапы маршрута -->
+                                    <h6>🚶 Этапы маршрута:</h6>
+                                    <div class="route-details">
+                                        {% for segment in route.segments %}
+                                        <div class="segment-item">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    {% if segment.type == 'walk' %}
+                                                        <span class="badge bg-success badge-transport">🚶 Пешком</span>
+                                                    {% elif segment.type == 'transport' %}
+                                                        {% if route.travel_mode == 'car' %}
+                                                            <span class="badge bg-warning badge-transport">🚗 Автомобиль</span>
+                                                        {% elif route.travel_mode == 'bicycle' %}
+                                                            <span class="badge bg-info badge-transport">🚲 Велосипед</span>
+                                                        {% else %}
+                                                            <span class="badge bg-primary badge-transport">🚌 Транспорт</span>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                    
+                                                    <span class="ms-2">
+                                                        {% if segment.details.route_name %}
+                                                            <strong>{{ segment.details.route_name }}</strong>
+                                                        {% endif %}
+                                                        {% if segment.details.text %}
+                                                            {{ segment.details.text }}
+                                                        {% endif %}
+                                                    </span>
+                                                    
+                                                    {% if segment.details.distance %}
+                                                    <div class="mt-1">
+                                                        <small class="text-muted">
+                                                            <strong>Протяженность:</strong> 
+                                                            {{ segment.details.distance }}
+                                                        </small>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div>
+                                                    <span class="badge bg-dark">{{ segment.time }} мин</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    
+                                    <!-- Пошаговые инструкции -->
+                                    {% if route.instructions %}
+                                    <h6 class="mt-3">📝 Пошаговый маршрут:</h6>
+                                    <div class="list-group">
+                                        {% for step in route.instructions %}
+                                        <div class="list-group-item">
+                                            <div class="d-flex w-100 justify-content-between">
+                                                <h6 class="mb-1">Шаг {{ forloop.counter }}</h6>
+                                                <small>{{ step.time }} мин ({{ step.distance }} м)</small>
+                                            </div>
+                                            <p class="mb-1">
+                                                {% if step.direction %}
+                                                    <strong>{{ step.direction }}</strong><br>
+                                                {% endif %}
+                                                {% if step.street %}
+                                                    <small class="text-muted">Улица: {{ step.street }}</small>
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Карта -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">🗺️ Визуализация маршрута</h5>
+                </div>
+                <div class="card-body">
+                    <div id="map"></div>
+                    <small class="text-muted mt-2 d-block">
+                        Карта центрирована на Екатеринбурге. Нажмите на маршрут в списке выше для отображения на карте.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    
+    <!-- Font Awesome (опционально, для иконок) -->
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    
+    <script>
+        // ИНИЦИАЛИЗАЦИЯ КАРТЫ
+        let map = L.map('map').setView([56.838011, 60.597465], 12); // Центр - Екатеринбург
+        
+        // Добавляем слой OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Переменные для хранения маршрутов и маркеров
+        let routeLayers = [];
+        let markers = [];
+        
+        // Данные маршрутов из Django (через JSON для безопасности)
+        const routesData = JSON.parse('{{ routes_json|escapejs }}' || '[]');
+        const geocodedPoints = JSON.parse('{{ geocoded_points_json|escapejs }}' || '{}');
+        
+        // Функция для отображения маршрута на карте
+        function showRouteOnMap(routeIndex) {
+            // Удаляем предыдущие маршруты и маркеры
+            clearMap();
+            
+            if (routesData.length > 0 && routeIndex < routesData.length) {
+                const route = routesData[routeIndex];
+                const routeCoordinates = route.coordinates || [];
+                
+                // Добавляем маркеры начальной и конечной точек
+                if (geocodedPoints.start && geocodedPoints.end) {
+                    // Маркер начала
+                    const startMarker = L.marker(
+                        [geocodedPoints.start.lat, geocodedPoints.start.lon],
+                        {
+                            icon: L.divIcon({
+                                className: 'route-marker-start',
+                                html: '<div style="background-color:#28a745; width:12px; height:12px; border-radius:50%;"></div>'
+                            })
+                        }
+                    ).addTo(map);
+                    
+                    startMarker.bindPopup(`
+                        <div class="route-info-window">
+                            <strong>📍 Начало маршрута</strong><br>
+                            ${geocodedPoints.start.address || 'Не указано'}<br>
+                            <small>Координаты: ${geocodedPoints.start.lat?.toFixed(4) || 'N/A'}, ${geocodedPoints.start.lon?.toFixed(4) || 'N/A'}</small>
+                        </div>
+                    `);
+                    markers.push(startMarker);
+                    
+                    // Маркер конца
+                    const endMarker = L.marker(
+                        [geocodedPoints.end.lat, geocodedPoints.end.lon],
+                        {
+                            icon: L.divIcon({
+                                className: 'route-marker-end',
+                                html: '<div style="background-color:#dc3545; width:12px; height:12px; border-radius:50%;"></div>'
+                            })
+                        }
+                    ).addTo(map);
+                    
+                    endMarker.bindPopup(`
+                        <div class="route-info-window">
+                            <strong>🏁 Конец маршрута</strong><br>
+                            ${geocodedPoints.end.address || 'Не указано'}<br>
+                            <small>Координаты: ${geocodedPoints.end.lat?.toFixed(4) || 'N/A'}, ${geocodedPoints.end.lon?.toFixed(4) || 'N/A'}</small>
+                        </div>
+                    `);
+                    markers.push(endMarker);
+                }
+                
+                // Отображаем маршрут на карте
+                if (routeCoordinates.length > 0) {
+                    // Для каждого сегмента маршрута
+                    route.segments?.forEach((segment, segmentIndex) => {
+                        const segmentCoords = routeCoordinates[segmentIndex] || [];
+                        
+                        if (segmentCoords.length > 0) {
+                            // Определяем цвет линии в зависимости от типа сегмента
+                            let color = '#007bff'; // синий по умолчанию
+                            
+                            if (segment.type === 'walk') {
+                                color = '#28a745'; // зеленый для пеших участков
+                            } else if (segment.type === 'transport') {
+                                if (route.travel_mode === 'car') {
+                                    color = '#ffc107'; // желтый для авто
+                                } else if (route.travel_mode === 'bicycle') {
+                                    color = '#17a2b8'; // голубой для велосипеда
+                                }
+                            }
+                            
+                            // Создаем полилинию для сегмента
+                            const polyline = L.polyline(segmentCoords, {
+                                color: color,
+                                weight: 4,
+                                opacity: 0.7,
+                                lineJoin: 'round'
+                            }).addTo(map);
+                            
+                            // Добавляем всплывающую подсказку
+                            let popupContent = '';
+                            if (segment.type === 'walk') {
+                                popupContent = `🚶 Пешком: ${segment.time} мин<br>${segment.details?.text || ''}`;
+                            } else if (segment.type === 'transport') {
+                                const vehicle = route.travel_mode === 'car' ? '🚗 Автомобиль' : 
+                                              route.travel_mode === 'bicycle' ? '🚲 Велосипед' : '🚌 Транспорт';
+                                popupContent = `${vehicle}: ${segment.time} мин<br>${segment.details?.route_name || ''}`;
+                            }
+                            
+                            if (popupContent) {
+                                polyline.bindPopup(popupContent);
+                            }
+                            
+                            routeLayers.push(polyline);
+                        }
+                    });
+                    
+                    // Подгоняем карту чтобы вместить весь маршрут
+                    const allPoints = routeCoordinates.flat();
+                    if (allPoints.length > 0) {
+                        const bounds = L.latLngBounds(allPoints);
+                        map.fitBounds(bounds, { padding: [50, 50] });
                     }
-                })
-                .catch(error => console.error('Ошибка автодополнения:', error));
-        }, 300);
-    });
-
-    function showAutocompleteItems(results, container, input) {
-        results.forEach(item => {
-            const itemElement = document.createElement('div');
-            // Используем .label, так как он уже содержит полный адрес
-            itemElement.textContent = item.label; // Меняем innerHTML на textContent для безопасности
-            itemElement.addEventListener('click', function() {
-                console.log('Выбран вариант:', item.value);
-                input.value = item.value;
-                container.innerHTML = ''; // Скрываем список
-            });
-            container.appendChild(itemElement);
-        });
-        console.log('Показано подсказок:', results.length);
-    }
-
-    // Закрываем список при клике вне его
-    document.addEventListener('click', function(e) {
-        if (e.target !== input && e.target !== itemsContainer) {
-            itemsContainer.innerHTML = '';
+                } else {
+                    // Если нет координат, показываем только маркеры
+                    if (geocodedPoints.start && geocodedPoints.end) {
+                        const bounds = L.latLngBounds([
+                            [geocodedPoints.start.lat, geocodedPoints.start.lon],
+                            [geocodedPoints.end.lat, geocodedPoints.end.lon]
+                        ]);
+                        map.fitBounds(bounds, { padding: [50, 50] });
+                    }
+                }
+            }
         }
-    });
-}
+        
+        // Функция очистки карты
+        function clearMap() {
+            routeLayers.forEach(layer => map.removeLayer(layer));
+            markers.forEach(marker => map.removeLayer(marker));
+            routeLayers = [];
+            markers = [];
+        }
+        
+        // Показываем первый маршрут при загрузке, если есть результаты
+        document.addEventListener('DOMContentLoaded', function() {
+            if (routesData.length > 0) {
+                // Автоматически разворачиваем первый аккордеон и показываем маршрут
+                setTimeout(() => {
+                    showRouteOnMap(0);
+                }, 500);
+            }
+            
+            // Инициализация автодополнения
+            setupAutocomplete('start-point', 'start-autocomplete');
+            setupAutocomplete('end-point', 'end-autocomplete');
+        });
+        
+        // Автодополнение
+        function setupAutocomplete(inputId, itemsContainerId) {
+            const input = document.getElementById(inputId);
+            const itemsContainer = document.getElementById(itemsContainerId);
 
-// Инициализируем после загрузки DOM
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM загружен, запуск автодополнения...');
-    setupAutocomplete('start-point', 'start-autocomplete');
-    setupAutocomplete('end-point', 'end-autocomplete');
-});
-</script>
+            if (!input || !itemsContainer) return;
+
+            input.addEventListener('input', function(e) {
+                const query = this.value.trim();
+                itemsContainer.innerHTML = '';
+
+                if (query.length < 2) return;
+
+                clearTimeout(window.autocompleteTimeout);
+                window.autocompleteTimeout = setTimeout(() => {
+                    fetch(`/api/autocomplete/?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.results && data.results.length > 0) {
+                                showAutocompleteItems(data.results, itemsContainer, input);
+                            }
+                        })
+                        .catch(error => console.error('Ошибка автодополнения:', error));
+                }, 300);
+            });
+
+            function showAutocompleteItems(results, container, input) {
+                results.forEach(item => {
+                    const itemElement = document.createElement('div');
+                    itemElement.textContent = item.label;
+                    itemElement.addEventListener('click', function() {
+                        input.value = item.value;
+                        container.innerHTML = '';
+                    });
+                    container.appendChild(itemElement);
+                });
+            }
+
+            document.addEventListener('click', function(e) {
+                if (e.target !== input && e.target !== itemsContainer) {
+                    itemsContainer.innerHTML = '';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
