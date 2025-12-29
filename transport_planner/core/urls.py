@@ -6,4 +6,5 @@ urlpatterns = [
     path('api/autocomplete/', views.autocomplete_api, name='autocomplete'),
     path('admin/clear-cache/', views.clear_cache_view, name='clear_cache'),
     path('api/status/', views.api_status, name='api_status'),
+    path('admin/analytics/', views.analytics_dashboard, name='analytics_dashboard'),
 ]

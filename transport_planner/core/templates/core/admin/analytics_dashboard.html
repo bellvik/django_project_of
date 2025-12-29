@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Дашборд аналитики - ЕкбТранспорт+</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --success-color: #06d6a0;
+            --warning-color: #ffd166;
+            --danger-color: #ef476f;
+            --info-color: #118ab2;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #3a0ca3 100%);
+            color: white;
+            padding: 2.5rem 0;
+            margin-bottom: 2.5rem;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 10px 30px rgba(67, 97, 238, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .dashboard-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+            transform: rotate(15deg);
+            opacity: 0.3;
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.8rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--info-color));
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+        
+        .metric-icon {
+            font-size: 2.2rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+        
+        .metric-value {
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: #2c3e50;
+            margin: 0.5rem 0;
+            line-height: 1;
+        }
+        
+        .metric-label {
+            font-size: 0.95rem;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .metric-trend {
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .card-custom {
+            border: none;
+            border-radius: 18px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+            overflow: hidden;
+            background: white;
+            transition: transform 0.3s ease;
+        }
+        
+        .card-custom:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-custom .card-header {
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            color: white;
+            border: none;
+            padding: 1.4rem 1.8rem;
+            font-weight: 700;
+            font-size: 1.3rem;
+            position: relative;
+        }
+        
+        .card-custom .card-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+        }
+        
+        .badge-custom {
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-weight: 600;
+            border: 2px solid transparent;
+        }
+        
+        .table-custom {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.05);
+            border: none;
+        }
+        
+        .table-custom thead th {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: none;
+            font-weight: 700;
+            color: #2c3e50;
+            padding: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.9rem;
+        }
+        
+        .table-custom tbody tr {
+            transition: all 0.2s ease;
+        }
+        
+        .table-custom tbody tr:hover {
+            background-color: #f8f9fa;
+            transform: scale(1.002);
+        }
+        
+        .chart-container {
+            padding: 1.5rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .info-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-left: 5px solid var(--primary-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, var(--success-color) 0%, #05c490 100%);
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(6, 214, 160, 0.4);
+        }
+        
+        .time-badge {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 0.3rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary-color), var(--info-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Шапка дашборда -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2 fw-bold">
+                        <i class="fas fa-chart-line me-3"></i>
+                        <span class="gradient-text">Аналитический дашборд</span>
+                    </h1>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="time-badge">
+                            <i class="fas fa-calendar me-2"></i>
+                            Данные за период: {{ week_ago|date:"d.m.Y" }} - {{ today|date:"d.m.Y" }}
+                        </span>
+                        <span class="time-badge">
+                            <i class="fas fa-clock me-2"></i>
+                            Обновлено: {{ cache_timestamp|time:"H:i" }}
+                        </span>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'home' %}" class="btn btn-light btn-lg px-4">
+                        <i class="fas fa-home me-2"></i> На главную
+                    </a>
+                    <a href="?refresh=1" class="refresh-btn">
+                        <i class="fas fa-sync-alt me-2"></i> Обновить данные
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Основные метрики -->
+        <div class="stats-grid">
+            <div class="metric-card">
+                <div class="metric-icon text-primary">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="metric-value">{{ total_searches }}</div>
+                <div class="metric-label">Всего поисков</div>
+                <div class="metric-trend">
+                    <span class="badge bg-success">✓ {{ successful_searches }} успешных</span>
+                    <span class="badge bg-danger">✗ {{ failed_searches }} неудачных</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon text-success">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <div class="metric-value">{{ conversion_rate }}%</div>
+                <div class="metric-label">Конверсия успеха</div>
+                <div class="metric-trend">
+                    {% if conversion_rate > 80 %}
+                    <i class="fas fa-rocket text-success"></i>
+                    <span class="text-success">Отличный показатель</span>
+                    {% elif conversion_rate > 60 %}
+                    <i class="fas fa-chart-line text-warning"></i>
+                    <span class="text-warning">Хороший показатель</span>
+                    {% else %}
+                    <i class="fas fa-exclamation-triangle text-danger"></i>
+                    <span class="text-danger">Требует внимания</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon text-info">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <div class="metric-value">
+                    {% if provider_stats.0.avg_response_time %}
+                        {{ provider_stats.0.avg_response_time|floatformat:0 }} мс
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+                <div class="metric-label">Ср. время ответа</div>
+                <div class="metric-trend">
+                    {% with avg_time=provider_stats.0.avg_response_time %}
+                    {% if avg_time and avg_time < 300 %}
+                    <i class="fas fa-bolt text-success"></i>
+                    <span class="text-success">Отличная скорость</span>
+                    {% elif avg_time and avg_time < 800 %}
+                    <i class="fas fa-tachometer-alt text-warning"></i>
+                    <span class="text-warning">Нормальная скорость</span>
+                    {% elif avg_time %}
+                    <i class="fas fa-exclamation-circle text-danger"></i>
+                    <span class="text-danger">Требует оптимизации</span>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon text-warning">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="metric-value">
+                    {% if provider_stats.0.cache_hit_rate %}
+                        {{ provider_stats.0.cache_hit_rate|floatformat:1 }}%
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+                <div class="metric-label">Попадания в кэш</div>
+                <div class="metric-trend">
+                    {% with cache_rate=provider_stats.0.cache_hit_rate %}
+                    {% if cache_rate and cache_rate > 50 %}
+                    <i class="fas fa-shield-alt text-success"></i>
+                    <span class="text-success">Эффективное кэширование</span>
+                    {% elif cache_rate %}
+                    <i class="fas fa-chart-bar text-info"></i>
+                    <span class="text-info">Есть потенциал роста</span>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Графики -->
+        <div class="row">
+            {% if graphs.top_routes %}
+            <div class="col-lg-6">
+                <div class="card-custom">
+                    <div class="card-header">
+                        <i class="fas fa-route me-2"></i> Популярные маршруты
+                    </div>
+                    <div class="card-body">
+                        <img src="data:image/png;base64,{{ graphs.top_routes }}" 
+                             alt="ТОП маршрутов" class="img-fluid rounded-3 shadow-sm">
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if graphs.provider_stats %}
+            <div class="col-lg-6">
+                <div class="card-custom">
+                    <div class="card-header">
+                        <i class="fas fa-server me-2"></i> Производительность API
+                    </div>
+                    <div class="card-body">
+                        <img src="data:image/png;base64,{{ graphs.provider_stats }}" 
+                             alt="Статистика API" class="img-fluid rounded-3 shadow-sm">
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if graphs.hourly_activity %}
+            <div class="col-12">
+                <div class="card-custom">
+                    <div class="card-header">
+                        <i class="fas fa-chart-area me-2"></i> Активность по часам
+                    </div>
+                    <div class="card-body">
+                        <img src="data:image/png;base64,{{ graphs.hourly_activity }}" 
+                             alt="Почасовая активность" class="img-fluid rounded-3 shadow-sm">
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if graphs.travel_modes %}
+            <div class="col-lg-6">
+                <div class="card-custom">
+                    <div class="card-header">
+                        <i class="fas fa-car me-2"></i> Типы маршрутов
+                    </div>
+                    <div class="card-body">
+                        <img src="data:image/png;base64,{{ graphs.travel_modes }}" 
+                             alt="Типы маршрутов" class="img-fluid rounded-3 shadow-sm">
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if graphs.daily_trends %}
+            <div class="col-lg-6">
+                <div class="card-custom">
+                    <div class="card-header">
+                        <i class="fas fa-trend-up me-2"></i> Динамика по дням
+                    </div>
+                    <div class="card-body">
+                        <img src="data:image/png;base64,{{ graphs.daily_trends }}" 
+                             alt="Динамика запросов" class="img-fluid rounded-3 shadow-sm">
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Детальная статистика -->
+        <div class="row">
+            <!-- Статистика по провайдерам -->
+            <div class="col-lg-8">
+                <div class="card-custom">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar me-2"></i> Детальная статистика по API
+                    </div>
+                    <div class="card-body">
+                        {% if provider_stats %}
+                        <div class="table-responsive">
+                            <table class="table table-custom">
+                                <thead>
+                                    <tr>
+                                        <th>Провайдер</th>
+                                        <th>Запросы</th>
+                                        <th>Ср. время</th>
+                                        <th>Успешность</th>
+                                        <th>Кэш</th>
+                                        <th>Эффективность</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stat in provider_stats %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge 
+                                                {% if 'tomtom' in stat.provider %}bg-primary
+                                                {% elif '2gis' in stat.provider %}bg-danger
+                                                {% elif 'stub' in stat.provider %}bg-secondary
+                                                {% else %}bg-info{% endif %}">
+                                                <i class="fas fa-{% if 'tomtom' in stat.provider %}map-marked-alt{% elif '2gis' in stat.provider %}map{% else %}code{% endif %} me-1"></i>
+                                                {{ stat.provider }}
+                                            </span>
+                                        </td>
+                                        <td class="fw-bold">{{ stat.request_count }}</td>
+                                        <td>
+                                            <span class="{% if stat.avg_response_time < 300 %}text-success fw-bold
+                                                       {% elif stat.avg_response_time < 800 %}text-warning
+                                                       {% else %}text-danger{% endif %}">
+                                                {{ stat.avg_response_time|floatformat:1 }} мс
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="progress" style="height: 8px;">
+                                                <div class="progress-bar bg-{% if stat.success_rate > 90 %}success{% elif stat.success_rate > 70 %}warning{% else %}danger{% endif %}" 
+                                                     style="width: {{ stat.success_rate }}%"
+                                                     title="{{ stat.success_rate|floatformat:1 }}%">
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">{{ stat.success_rate|floatformat:1 }}%</small>
+                                        </td>
+                                        <td>
+                                            <div class="progress" style="height: 8px;">
+                                                <div class="progress-bar bg-info" 
+                                                     style="width: {{ stat.cache_hit_rate }}%"
+                                                     title="{{ stat.cache_hit_rate|floatformat:1 }}%">
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">{{ stat.cache_hit_rate|floatformat:1 }}%</small>
+                                        </td>
+                                        <td>
+                                            {% if stat.avg_response_time < 300 and stat.success_rate > 90 %}
+                                            <span class="badge bg-success">Отличная</span>
+                                            {% elif stat.avg_response_time < 600 and stat.success_rate > 75 %}
+                                            <span class="badge bg-warning">Хорошая</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">Требует оптимизации</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-database fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Нет данных для отображения</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Пиковые часы и ошибки -->
+            <div class="col-lg-4">
+                <div class="card-custom">
+                    <div class="card-header">
+                        <i class="fas fa-clock me-2"></i> Пиковая активность
+                    </div>
+                    <div class="card-body">
+                        {% if peak_hours %}
+                        <div class="list-group">
+                            {% for hour in peak_hours %}
+                            <div class="list-group-item border-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-clock text-primary me-2"></i>
+                                        <strong>{{ hour.hour|time:"H:i" }}</strong>
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill px-3">
+                                        {{ hour.searches }} запр.
+                                    </span>
+                                </div>
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar" 
+                                         style="width: {% widthratio hour.searches peak_hours.0.searches 100 %}%">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center py-4">Нет данных о пиковой активности</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-custom mt-4">
+                    <div class="card-header">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Частые ошибки
+                    </div>
+                    <div class="card-body">
+                        {% if common_errors %}
+                        <div class="list-group">
+                            {% for error in common_errors %}
+                            <div class="list-group-item border-0 py-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <small class="text-muted">#{{ forloop.counter }}</small>
+                                        <div class="mt-1">
+                                            <small class="text-danger">
+                                                {{ error.error_message|truncatechars:60 }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-danger rounded-pill">
+                                        {{ error.count }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle fa-2x text-success mb-3"></i>
+                            <p class="text-success mb-0">Критических ошибок не обнаружено</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Популярные маршруты (детальная таблица) -->
+        {% if top_routes %}
+        <div class="card-custom">
+            <div class="card-header">
+                <i class="fas fa-star me-2"></i> Детальная статистика маршрутов
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-custom">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Откуда</th>
+                                <th>Куда</th>
+                                <th>Запросов</th>
+                                <th>Ср. вариантов</th>
+                                <th>Доля от всех</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for route in top_routes %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-{% if forloop.counter == 1 %}warning
+                                                         {% elif forloop.counter <= 3 %}info
+                                                         {% else %}secondary{% endif %}">
+                                        {{ forloop.counter }}
+                                    </span>
+                                </td>
+                                <td class="fw-semibold">{{ route.start_query|truncatechars:25 }}</td>
+                                <td class="fw-semibold">{{ route.end_query|truncatechars:25 }}</td>
+                                <td>
+                                    <span class="badge bg-primary rounded-pill px-3 py-2">
+                                        {{ route.count }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-info fw-bold">
+                                        {{ route.avg_routes|default:"—"|floatformat:1 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% widthratio route.count total_searches 100 as percentage %}
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="progress flex-grow-1" style="height: 8px;">
+                                            <div class="progress-bar bg-{% if percentage > 5 %}success{% elif percentage > 2 %}warning{% else %}info{% endif %}" 
+                                                 style="width: {{ percentage }}%">
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">{{ percentage|floatformat:1 }}%</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if route.count > 10 %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-fire me-1"></i> Популярный
+                                    </span>
+                                    {% elif route.count > 5 %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-chart-line me-1"></i> Стабильный
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-history me-1"></i> Периодический
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Информация о кэшировании -->
+        <div class="text-center mt-5 mb-4">
+            <div class="d-inline-flex align-items-center gap-3 bg-white p-3 rounded-3 shadow-sm">
+                <i class="fas fa-info-circle text-primary fa-lg"></i>
+                <div class="text-start">
+                    <small class="text-muted">
+                        <strong>Примечание:</strong> Данные кэшируются на 5 минут для повышения производительности.
+                        Для принудительного обновления нажмите кнопку "Обновить данные".
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Автоматическое обновление каждые 5 минут
+        setTimeout(function() {
+            window.location.href = '?refresh=1';
+        }, 300000);
+        
+        // Анимация при наведении на строки таблицы
+        document.addEventListener('DOMContentLoaded', function() {
+            const tableRows = document.querySelectorAll('.table-custom tbody tr');
+            tableRows.forEach(row => {
+                row.addEventListener('mouseenter', function() {
+                    this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                    this.style.transition = 'all 0.2s ease';
+                });
+                row.addEventListener('mouseleave', function() {
+                    this.style.boxShadow = 'none';
+                });
+            });
+            
+            // Плавная прокрутка
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    if(targetId !== '#') {
+                        document.querySelector(targetId)?.scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        });
+        
+        // Показываем время обновления
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = 
+                now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+        setInterval(updateTime, 60000);
+        updateTime();
+    </script>
+</body>
+</html>

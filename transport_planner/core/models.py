@@ -51,6 +51,7 @@ class SearchHistory(models.Model):
     end_coords = models.CharField(max_length=50, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     is_successful = models.BooleanField(default=True)
-    routes_count = models.IntegerField(default=0)  
+    routes_count = models.IntegerField(default=0) 
+    travel_mode = models.CharField(max_length=20, blank=True, null=True) 
     def __str__(self):
         return f"{self.start_query} -> {self.end_query}"
