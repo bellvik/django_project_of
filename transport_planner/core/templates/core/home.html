@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ЕкбТранспорт+ - Планировщик поездок</title>
     
-    <!-- Bootstrap CSS -->
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    <!-- Leaflet CSS -->
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     
     <style>
@@ -66,7 +66,6 @@
             padding: 4px 8px;
         }
         
-        /* Стили для карты */
         #map {
             height: 500px;
             width: 100%;
@@ -74,7 +73,7 @@
             border: 1px solid #ddd;
         }
         
-        /* Адаптивность карты */
+
         @media (max-width: 768px) {
             #map {
                 height: 350px;
@@ -87,12 +86,12 @@
             }
         }
         
-        /* Улучшение аккордеона для взаимодействия с картой */
+
         .accordion-button:not(.collapsed) {
             background-color: #e7f1ff;
         }
         
-        /* Иконки для инструкций */
+
         .step-icon {
             font-size: 1.2em;
             margin-right: 8px;
@@ -100,7 +99,7 @@
     </style>
 </head>
 <body class="container mt-4">
-    <!-- Заголовок и оповещения -->
+
     <div class="row">
         <div class="col-12">
             <h1 class="mb-3">🗺️ ЕкбТранспорт+ - Планировщик поездок</h1>
@@ -116,10 +115,7 @@
             {% endif %}
         </div>
     </div>
-
-    <!-- Форма поиска и результаты -->
     <div class="row">
-        <!-- Левая колонка: форма поиска -->
         <div class="col-lg-5">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
@@ -169,7 +165,6 @@
             </div>
         </div>
 
-        <!-- Правая колонка: маршруты -->
         <div class="col-lg-7">
             {% if routes %}
             <div class="card shadow-sm">
@@ -230,7 +225,6 @@
                                         </div>
                                     </div>
                                     
-                                    <!-- Этапы маршрута -->
                                     <h6>🚶 Этапы маршрута:</h6>
                                     <div class="route-details">
                                         {% for segment in route.segments %}
@@ -275,7 +269,6 @@
                                         {% endfor %}
                                     </div>
                                     
-                                    <!-- Пошаговые инструкции -->
                                     {% if route.instructions %}
                                     <h6 class="mt-3">📝 Пошаговый маршрут:</h6>
                                     <div class="list-group">
@@ -308,7 +301,6 @@
         </div>
     </div>
 
-    <!-- Карта -->
     <div class="row mt-4">
         <div class="col-12">
             <div class="card shadow-sm">
@@ -325,44 +317,37 @@
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
+ 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Leaflet JS -->
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     
-    <!-- Font Awesome (опционально, для иконок) -->
+  
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     
     <script>
-        // ИНИЦИАЛИЗАЦИЯ КАРТЫ
+
         let map = L.map('map').setView([56.838011, 60.597465], 12); // Центр - Екатеринбург
-        
-        // Добавляем слой OpenStreetMap
+    
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
         
-        // Переменные для хранения маршрутов и маркеров
+
         let routeLayers = [];
         let markers = [];
         
-        // Данные маршрутов из Django (через JSON для безопасности)
+
         const routesData = JSON.parse('{{ routes_json|escapejs }}' || '[]');
         const geocodedPoints = JSON.parse('{{ geocoded_points_json|escapejs }}' || '{}');
-        
-        // Функция для отображения маршрута на карте
         function showRouteOnMap(routeIndex) {
-            // Удаляем предыдущие маршруты и маркеры
             clearMap();
             
             if (routesData.length > 0 && routeIndex < routesData.length) {
                 const route = routesData[routeIndex];
                 const routeCoordinates = route.coordinates || [];
-                
-                // Добавляем маркеры начальной и конечной точек
                 if (geocodedPoints.start && geocodedPoints.end) {
-                    // Маркер начала
                     const startMarker = L.marker(
                         [geocodedPoints.start.lat, geocodedPoints.start.lon],
                         {
@@ -381,8 +366,6 @@
                         </div>
                     `);
                     markers.push(startMarker);
-                    
-                    // Маркер конца
                     const endMarker = L.marker(
                         [geocodedPoints.end.lat, geocodedPoints.end.lon],
                         {
@@ -403,27 +386,24 @@
                     markers.push(endMarker);
                 }
                 
-                // Отображаем маршрут на карте
                 if (routeCoordinates.length > 0) {
-                    // Для каждого сегмента маршрута
+
                     route.segments?.forEach((segment, segmentIndex) => {
                         const segmentCoords = routeCoordinates[segmentIndex] || [];
                         
                         if (segmentCoords.length > 0) {
-                            // Определяем цвет линии в зависимости от типа сегмента
                             let color = '#007bff'; // синий по умолчанию
                             
                             if (segment.type === 'walk') {
                                 color = '#28a745'; // зеленый для пеших участков
                             } else if (segment.type === 'transport') {
                                 if (route.travel_mode === 'car') {
-                                    color = '#ff3333'; // желтый для авто
+                                    color = '#ff3333'; // красный для авто
                                 } else if (route.travel_mode === 'bicycle') {
                                     color = '#17a2b8'; // голубой для велосипеда
                                 }
                             }
                             
-                            // Создаем полилинию для сегмента
                             const polyline = L.polyline(segmentCoords, {
                                 color: color,
                                 weight: 4,
@@ -431,7 +411,6 @@
                                 lineJoin: 'round'
                             }).addTo(map);
                             
-                            // Добавляем всплывающую подсказку
                             let popupContent = '';
                             if (segment.type === 'walk') {
                                 popupContent = `🚶 Пешком: ${segment.time} мин<br>${segment.details?.text || ''}`;
@@ -448,15 +427,12 @@
                             routeLayers.push(polyline);
                         }
                     });
-                    
-                    // Подгоняем карту чтобы вместить весь маршрут
                     const allPoints = routeCoordinates.flat();
                     if (allPoints.length > 0) {
                         const bounds = L.latLngBounds(allPoints);
                         map.fitBounds(bounds, { padding: [50, 50] });
                     }
                 } else {
-                    // Если нет координат, показываем только маркеры
                     if (geocodedPoints.start && geocodedPoints.end) {
                         const bounds = L.latLngBounds([
                             [geocodedPoints.start.lat, geocodedPoints.start.lon],
@@ -468,7 +444,7 @@
             }
         }
         
-        // Функция очистки карты
+
         function clearMap() {
             routeLayers.forEach(layer => map.removeLayer(layer));
             markers.forEach(marker => map.removeLayer(marker));
@@ -476,21 +452,16 @@
             markers = [];
         }
         
-        // Показываем первый маршрут при загрузке, если есть результаты
         document.addEventListener('DOMContentLoaded', function() {
             if (routesData.length > 0) {
-                // Автоматически разворачиваем первый аккордеон и показываем маршрут
                 setTimeout(() => {
                     showRouteOnMap(0);
                 }, 500);
             }
             
-            // Инициализация автодополнения
             setupAutocomplete('start-point', 'start-autocomplete');
             setupAutocomplete('end-point', 'end-autocomplete');
         });
-        
-        // Автодополнение
         function setupAutocomplete(inputId, itemsContainerId) {
             const input = document.getElementById(inputId);
             const itemsContainer = document.getElementById(itemsContainerId);

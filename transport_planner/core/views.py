@@ -1,4 +1,3 @@
-# core/views.py
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
@@ -12,7 +11,6 @@ from datetime import datetime, date, timedelta
 import time
 from django.core.serializers.json import DjangoJSONEncoder
 import json
-# Импорт моделей
 from .models import SearchHistory, CachedRoute, ApiLog
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Count, Avg, Q
@@ -20,10 +18,8 @@ from django.db.models.functions import TruncHour, TruncDay
 from django.core.cache import cache
 from django.db.models import Case, When, FloatField
 from django.utils import timezone
-# Импорт форм
 from .forms import RouteSearchForm
 import numpy as np
-# Импорт сервисов
 from .services.geocoding_service import StubGeocodingService, TomTomGeocodingService
 from .services.routing_service import StubRoutingService, TomTomRoutingService, TwoGisRoutingService
 from .services.cached_routing_service import CachedRoutingService
@@ -39,7 +35,7 @@ def home(request):
     form = RouteSearchForm()
     geocoded_points = {}
     error_message = None
-    selected_mode = 'car'  # Режим по умолчанию
+    selected_mode = 'car'  
 
     if request.method == 'GET' and 'start_point' in request.GET:
         form = RouteSearchForm(request.GET)
@@ -48,11 +44,8 @@ def home(request):
             start_query = form.cleaned_data['start_point']
             end_query = form.cleaned_data['end_point']
 
-            
-            # Получаем выбранный режим передвижения
             selected_mode = request.GET.get('travel_mode', 'car')
             
-            # 1. ГЕОКОДИРОВАНИЕ с использованием TomTom API
             if getattr(settings, 'USE_REAL_API', False):
                 geocoder = TomTomGeocodingService(api_key=settings.TOMTOM_API_KEY)
             else:
@@ -84,39 +77,33 @@ def home(request):
                     }
                 }
 
-                # 2. МАРШРУТИЗАЦИЯ с композитным сервисом
                 try:
                     if getattr(settings, 'USE_REAL_API', False):
                         print(f"[DEBUG] Используем TomTom напрямую, режим: {selected_mode}")
                         
-                        # 1. Создаем реальный TomTom сервис с нужным режимом
                         tomtom_service = TomTomRoutingService(
                             api_key=settings.TOMTOM_API_KEY,
-                            travel_mode=selected_mode  # передаем режим сюда
+                            travel_mode=selected_mode 
                         )
                         
-                        # 2. Сразу оборачиваем его в кэширующий сервис (минуя CompositeRoutingService)
                         routing_service = CachedRoutingService(
-                            routing_service=tomtom_service,  # передаем реальный TomTom сервис
+                            routing_service=tomtom_service, 
                             provider_name=f"tomtom_{selected_mode}"
                         )
                         
                     else:
                         print(f"[DEBUG] Используем заглушку")
-                        # Для заглушки используем StubRoutingService
                         stub_service = StubRoutingService()
                         routing_service = CachedRoutingService(
                             routing_service=stub_service,
                             provider_name="stub"
                         )
                     
-                    # Оборачиваем в кэширующий сервис
                     cached_service = CachedRoutingService(
                         routing_service=routing_service,
                         provider_name=f"tomtom_{selected_mode}" if getattr(settings, 'USE_REAL_API', False) else "stub"
                     )
                     
-                    # Получаем маршруты (с кэшированием)
                     routes_data = cached_service.get_routes(
                         geocoded_points['start']['lat'],
                         geocoded_points['start']['lon'],
@@ -124,28 +111,17 @@ def home(request):
                         geocoded_points['end']['lon']
                     )
 
-                    # 3. УЧЕТ ПРОБОК (только для автомобильного режима)
-                    
-                    
-                    # Для пеших и велосипедных маршрутов не учитываем пробки
-                     # Коэффициент пробок = 1 (без пробок)
-
-                    # 4. ОБРАБОТКА РЕЗУЛЬТАТОВ
                     if routes_data and 'result' in routes_data:
                         for route in routes_data['result']:
                             
-                            route['total_time'] = route.get('total_time', 0)  # Время уже включает пробки
+                            route['total_time'] = route.get('total_time', 0) 
                             route['traffic_delay'] = route.get('traffic_delay', 0)
                             
-                            # Добавляем информацию о режиме передвижения
                             mode_display = {
                                 'car': {'name': '🚗 На машине', 'icon': '🚗'},
                                 'pedestrian': {'name': '🚶 Пешком', 'icon': '🚶'},
                                 'bicycle': {'name': '🚲 На велосипеде', 'icon': '🚲'}
                             }.get(selected_mode, {'name': 'На машине', 'icon': '🚗'})
-                            
-                            
-                           
                             
                             route['start_address'] = geocoded_points['start']['address']
                             route['end_address'] = geocoded_points['end']['address']
@@ -154,7 +130,6 @@ def home(request):
                             route['mode_icon'] = mode_display['icon']
                             route['source'] = routes_data.get('source', 'unknown')
                             
-                            # Добавляем информацию о пробках в детали (только для авто)
                             for segment in route.get('segments', []):
                                 if segment['type'] == 'transport' or segment['type'] == 'walk':
                                     if 'details' not in segment:
@@ -163,7 +138,6 @@ def home(request):
                             
                             routes.append(route)
 
-                    # 5. СОХРАНЕНИЕ ИСТОРИИ ПОИСКА с указанием режима
                     SearchHistory.objects.create(
                         start_query=start_query,
                         end_query=end_query,
@@ -179,7 +153,6 @@ def home(request):
                     print(f"Ошибка маршрутизации: {e}")
     routes_json = json.dumps(routes, cls=DjangoJSONEncoder, ensure_ascii=False)
     geocoded_points_json = json.dumps(geocoded_points, cls=DjangoJSONEncoder, ensure_ascii=False)
-    # Передаем выбранный режим в контекст для сохранения в форме
     context = {
         'form': form,
         'routes': routes,
@@ -239,8 +212,6 @@ def clear_cache_view(request):
     Представление для очистки кэша (только для администраторов).
     """
     from django.utils import timezone
-    
-    # Проверяем, является ли пользователь администратором
     if not request.user.is_authenticated or not request.user.is_staff:
         return redirect('home')
     
@@ -248,12 +219,10 @@ def clear_cache_view(request):
     expired_count = 0
     
     if request.method == 'POST':
-        # Удаляем все устаревшие записи кэша
         expired_count = CachedRoute.objects.filter(
             expires_at__lt=timezone.now()
         ).delete()[0]
         
-        # Или удаляем все записи
         if 'clear_all' in request.POST:
             all_count = CachedRoute.objects.all().delete()[0]
             message = f'Удалено всех записей: {all_count}'
@@ -271,8 +240,6 @@ def api_status(request):
     Простой API-эндпоинт для проверки статуса сервиса.
     """
     from django.utils import timezone
-    
-    # Статистика за последний час
     hour_ago = timezone.now() - timezone.timedelta(hours=1)
     
     stats = {
@@ -301,32 +268,23 @@ def api_status(request):
 @staff_member_required
 def analytics_dashboard(request):
     """Дашборд аналитики для администраторов"""
-    
-    # Используем кэширование для тяжёлых запросов (5 минут)
     cache_key = f"analytics_{date.today().strftime('%Y%m%d')}"
     cached_data = cache.get(cache_key)
     
     if cached_data and not request.GET.get('refresh'):
         context = cached_data
     else:
-        # 1. Базовые метрики из SearchHistory
         total_searches = SearchHistory.objects.count()
         successful_searches = SearchHistory.objects.filter(is_successful=True).count()
         failed_searches = SearchHistory.objects.filter(is_successful=False).count()
-        
-        # 2. Статистика API из ApiLog за последние 7 дней
         week_ago = timezone.now() - timedelta(days=7)
         api_logs = ApiLog.objects.filter(timestamp__gte=week_ago)
-        
-        # 3. ТОП-10 популярных маршрутов
         top_routes = SearchHistory.objects.filter(
             is_successful=True
         ).values('start_query', 'end_query').annotate(
             count=Count('id'),
             avg_routes=Avg('routes_count')
         ).order_by('-count')[:10]
-        
-        # 4. Статистика по провайдерам
         provider_stats = ApiLog.objects.filter(
             timestamp__gte=week_ago
         ).values('provider').annotate(
@@ -343,8 +301,6 @@ def analytics_dashboard(request):
                 output_field=FloatField()
             ))
         ).order_by('-request_count')
-        
-        # 5. Почасовая статистика за сегодня
         today = timezone.now().date()
         hourly_stats = ApiLog.objects.filter(
             timestamp__date=today
@@ -354,8 +310,7 @@ def analytics_dashboard(request):
             requests=Count('id'),
             avg_time=Avg('response_time_ms')
         ).order_by('hour')
-        
-        # 6. Статистика по типам маршрутов
+
         travel_mode_stats = SearchHistory.objects.filter(
             is_successful=True,
             timestamp__gte=week_ago
@@ -365,25 +320,19 @@ def analytics_dashboard(request):
             count=Count('id')
         ).exclude(travel_mode__isnull=True)
         travel_mode_stats = []
-        
-        # 7. Конверсия (успешные поиски / всего)
         conversion_rate = (successful_searches / total_searches * 100) if total_searches > 0 else 0
-        
-        # 8. Самые частые ошибки
         common_errors = ApiLog.objects.filter(
             response_status__gte=400
         ).values('error_message').annotate(
             count=Count('id')
         ).exclude(error_message='').order_by('-count')[:5]
         
-        # 9. Пиковые часы активности
         peak_hours = SearchHistory.objects.annotate(
             hour=TruncHour('timestamp')
         ).values('hour').annotate(
             searches=Count('id')
         ).order_by('-searches')[:5]
         
-        # 10. Генерация графиков
         graphs = {}
         
         # График 1: ТОП маршрутов
@@ -425,7 +374,6 @@ def analytics_dashboard(request):
             if not df_daily.empty:
                 graphs['daily_trends'] = create_daily_trends_chart(df_daily)
         
-        # Собираем контекст
         context = {
             'total_searches': total_searches,
             'successful_searches': successful_searches,
@@ -443,18 +391,15 @@ def analytics_dashboard(request):
             'cache_timestamp': timezone.now(),
         }
         
-        # Кэшируем на 5 минут
         cache.set(cache_key, context, 300)
     
     return render(request, 'core/admin/analytics_dashboard.html', context)
 
-
-# Вспомогательные функции для создания графиков
 def create_top_routes_chart(df):
     """Создает график ТОП маршрутов"""
     plt.figure(figsize=(14, 8))
     
-    # Создаем подписи
+
     labels = []
     for _, row in df.iterrows():
         start = str(row['start_query'])[:15] + ('...' if len(str(row['start_query'])) > 15 else '')
@@ -466,8 +411,7 @@ def create_top_routes_chart(df):
     plt.xlabel('Количество запросов', fontsize=12)
     plt.title('ТОП-10 популярных маршрутов', fontsize=14, fontweight='bold', pad=20)
     plt.gca().invert_yaxis()
-    
-    # Добавляем значения
+
     for i, (_, row) in enumerate(df.iterrows()):
         plt.text(row['count'] + max(df['count']) * 0.01, i, 
                 f"{row['count']} запр.", 
@@ -484,10 +428,9 @@ def create_provider_stats_chart(df):
     x = range(len(df))
     width = 0.35
     
-    # Запросы
     bars1 = plt.bar(x, df['request_count'], width, label='Запросы', color='#4e79a7')
     
-    # Среднее время ответа (на втором графике)
+
     ax2 = plt.gca().twinx()
     bars2 = ax2.plot(x, df['avg_response_time'], 'o-', color='#e15759', 
                     linewidth=3, markersize=8, label='Время ответа (мс)')
@@ -498,7 +441,6 @@ def create_provider_stats_chart(df):
     ax2.set_ylabel('Среднее время ответа (мс)', fontsize=12)
     plt.title('Статистика по провайдерам API', fontsize=14, fontweight='bold', pad=20)
     
-    # Легенда
     lines1, labels1 = plt.gca().get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     plt.gca().legend(lines1 + lines2, labels1 + labels2, loc='upper left')
@@ -513,30 +455,21 @@ def create_hourly_chart(df):
     
     df['hour'] = pd.to_datetime(df['hour']).dt.hour
     df = df.sort_values('hour')
-    
-    # Два графика: запросы и время ответа
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10), sharex=True)
-    
-    # График запросов
     bars = ax1.bar(df['hour'], df['requests'], color='#76b7b2', edgecolor='black')
     ax1.set_ylabel('Количество запросов', fontsize=12)
     ax1.set_title('Почасовая активность API (сегодня)', fontsize=14, fontweight='bold')
     ax1.grid(True, alpha=0.3)
-    
-    # Добавляем значения на столбцы
     for bar in bars:
         height = bar.get_height()
         ax1.text(bar.get_x() + bar.get_width()/2., height + 0.1,
                 f'{int(height)}', ha='center', va='bottom', fontsize=9)
-    
-    # График времени ответа
     ax2.plot(df['hour'], df['avg_time'], 'o-', color='#edc949', 
             linewidth=2, markersize=8, markerfacecolor='white', markeredgewidth=2)
     ax2.set_xlabel('Час дня', fontsize=12)
     ax2.set_ylabel('Среднее время ответа (мс)', fontsize=12)
     ax2.grid(True, alpha=0.3)
     ax2.set_xticks(df['hour'])
-    
     plt.tight_layout()
     return save_plot_to_base64()
 
@@ -544,8 +477,6 @@ def create_hourly_chart(df):
 def create_travel_modes_chart(df):
     """Создает график типов маршрутов"""
     plt.figure(figsize=(10, 8))
-    
-    # Круговой график
     colors = plt.cm.Set3(np.linspace(0, 1, len(df)))
     wedges, texts, autotexts = plt.pie(
         df['count'], 
@@ -555,8 +486,6 @@ def create_travel_modes_chart(df):
         startangle=90,
         textprops={'fontsize': 11}
     )
-    
-    # Делаем подписи жирнее
     for autotext in autotexts:
         autotext.set_color('white')
         autotext.set_fontweight('bold')
@@ -572,26 +501,19 @@ def create_daily_trends_chart(df):
     
     df['day'] = pd.to_datetime(df['day']).dt.strftime('%d.%m')
     df = df.sort_values('day')
-    
-    # Двойной график
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10))
-    
-    # Запросы (столбцы)
     bars = ax1.bar(df['day'], df['requests'], color='#59a14f', alpha=0.7)
     ax1.set_ylabel('Запросов в день', fontsize=12)
     ax1.set_title('Динамика запросов по дням', fontsize=14, fontweight='bold')
     ax1.tick_params(axis='x', rotation=45)
     ax1.grid(True, alpha=0.3, axis='y')
-    
-    # Время ответа (линия)
+
     ax2.plot(df['day'], df['avg_time'], 's-', color='#b07aa1', 
             linewidth=2, markersize=8, markerfacecolor='white', markeredgewidth=2)
     ax2.set_xlabel('Дата', fontsize=12)
     ax2.set_ylabel('Ср. время ответа (мс)', fontsize=12)
     ax2.grid(True, alpha=0.3)
     ax2.tick_params(axis='x', rotation=45)
-    
-    # Добавляем трендовую линию для времени ответа
     if len(df) > 2:
         x_numeric = range(len(df))
         z = np.polyfit(x_numeric, df['avg_time'], 1)

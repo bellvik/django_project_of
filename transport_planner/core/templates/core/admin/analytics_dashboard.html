@@ -226,43 +226,159 @@
             gap: 1.5rem;
             margin-bottom: 2rem;
         }
+
+        .graph-preview {
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid transparent;
+        }
+        
+        .graph-preview:hover {
+            transform: scale(1.02);
+            border-color: var(--primary-color);
+            box-shadow: 0 10px 25px rgba(67, 97, 238, 0.3);
+        }
+        
+        .graph-preview::after {
+            content: '🔍 Нажмите для увеличения';
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .graph-preview:hover::after {
+            opacity: 1;
+        }
+        
+        .clickable-graph {
+            cursor: pointer;
+        }
+        
+        .modal-fullscreen .modal-content {
+            min-height: 95vh;
+        }
+        
+        #modalGraphImage {
+            max-height: 80vh;
+            object-fit: contain;
+            cursor: zoom-in;
+            transition: transform 0.3s ease;
+        }
+        
+        #modalGraphImage.zoomed {
+            transform: scale(1.5);
+            cursor: zoom-out;
+        }
+        .btn-container {
+        position: relative;
+        display: inline-block;
+        }
+    
+        .btn-container:hover .btn-tooltip {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .btn-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            z-index: 1002;
+        }
+        
+        .btn-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+        }
+        
+        
+        .dashboard-header {
+            overflow: visible !important;
+        }
+        
+        .dashboard-header::before {
+            display: none; 
+        }
     </style>
 </head>
 <body>
-    <!-- Шапка дашборда -->
     <div class="dashboard-header">
-        <div class="container">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="mb-2 fw-bold">
-                        <i class="fas fa-chart-line me-3"></i>
-                        <span class="gradient-text">Аналитический дашборд</span>
-                    </h1>
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="time-badge">
-                            <i class="fas fa-calendar me-2"></i>
-                            Данные за период: {{ week_ago|date:"d.m.Y" }} - {{ today|date:"d.m.Y" }}
-                        </span>
-                        <span class="time-badge">
-                            <i class="fas fa-clock me-2"></i>
-                            Обновлено: {{ cache_timestamp|time:"H:i" }}
-                        </span>
-                    </div>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div style="position: relative; z-index: 100;">
+                <h1 class="mb-2 fw-bold" style="color: white; margin-left: -10px;">
+                    <i class="fas fa-chart-line me-3"></i>
+                    Аналитический дашборд
+                </h1>
+                <div class="d-flex align-items-center gap-3" style="position: relative; z-index: 101;">
+                    <span class="time-badge">
+                        <i class="fas fa-calendar me-2"></i>
+                        Данные за период: {{ week_ago|date:"d.m.Y" }} - {{ today|date:"d.m.Y" }}
+                    </span>
+                    <span class="time-badge">
+                        <i class="fas fa-clock me-2"></i>
+                        Обновлено: <span id="current-time">{{ cache_timestamp|time:"H:i" }}</span>
+                    </span>
                 </div>
-                <div class="d-flex gap-2">
-                    <a href="{% url 'home' %}" class="btn btn-light btn-lg px-4">
+            </div>
+            <div class="d-flex gap-2" 
+                 style="position: relative; z-index: 1001; margin-left: auto;">
+                <div class="btn-container">
+                    <a id="home-btn" href="/" 
+                       class="btn btn-light btn-lg px-4 shadow"
+                       onclick="console.log('Клик по главной'); return true;">
                         <i class="fas fa-home me-2"></i> На главную
                     </a>
-                    <a href="?refresh=1" class="refresh-btn">
-                        <i class="fas fa-sync-alt me-2"></i> Обновить данные
+                    <div class="btn-tooltip">Перейти на главную страницу</div>
+                </div>
+                <div class="btn-container">
+                    <a id="admin-btn" href="/admin/" 
+                       class="btn btn-warning btn-lg px-4 shadow"
+                       onclick="console.log('Клик по админке'); return true;">
+                        <i class="fas fa-cog me-2"></i> Админка
                     </a>
+                    <div class="btn-tooltip">Перейти в админ-панель</div>
+                </div>
+                <div class="btn-container">
+                    <a href="?refresh=1" 
+                       class="btn btn-success btn-lg px-4 shadow"
+                       style="background: linear-gradient(135deg, var(--success-color) 0%, #05c490 100%); color: white;">
+                        <i class="fas fa-sync-alt me-2"></i> Обновить
+                    </a>
+                    <div class="btn-tooltip">Обновить данные дашборда</div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
     <div class="container">
-        <!-- Основные метрики -->
         <div class="stats-grid">
             <div class="metric-card">
                 <div class="metric-icon text-primary">
@@ -349,8 +465,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Графики -->
         <div class="row">
             {% if graphs.top_routes %}
             <div class="col-lg-6">
@@ -359,8 +473,14 @@
                         <i class="fas fa-route me-2"></i> Популярные маршруты
                     </div>
                     <div class="card-body">
-                        <img src="data:image/png;base64,{{ graphs.top_routes }}" 
-                             alt="ТОП маршрутов" class="img-fluid rounded-3 shadow-sm">
+                        <div class="graph-preview" onclick="openGraphModal('{{ graphs.top_routes }}', 'Популярные маршруты')">
+                            <img src="data:image/png;base64,{{ graphs.top_routes }}" 
+                                 alt="ТОП маршрутов" 
+                                 class="img-fluid rounded-3 shadow-sm clickable-graph">
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-mouse-pointer me-1"></i>Нажмите на график для увеличения
+                        </small>
                     </div>
                 </div>
             </div>
@@ -373,8 +493,14 @@
                         <i class="fas fa-server me-2"></i> Производительность API
                     </div>
                     <div class="card-body">
-                        <img src="data:image/png;base64,{{ graphs.provider_stats }}" 
-                             alt="Статистика API" class="img-fluid rounded-3 shadow-sm">
+                        <div class="graph-preview" onclick="openGraphModal('{{ graphs.provider_stats }}', 'Производительность API')">
+                            <img src="data:image/png;base64,{{ graphs.provider_stats }}" 
+                                 alt="Статистика API" 
+                                 class="img-fluid rounded-3 shadow-sm clickable-graph">
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-mouse-pointer me-1"></i>Нажмите на график для увеличения
+                        </small>
                     </div>
                 </div>
             </div>
@@ -387,8 +513,14 @@
                         <i class="fas fa-chart-area me-2"></i> Активность по часам
                     </div>
                     <div class="card-body">
-                        <img src="data:image/png;base64,{{ graphs.hourly_activity }}" 
-                             alt="Почасовая активность" class="img-fluid rounded-3 shadow-sm">
+                        <div class="graph-preview" onclick="openGraphModal('{{ graphs.hourly_activity }}', 'Активность по часам')">
+                            <img src="data:image/png;base64,{{ graphs.hourly_activity }}" 
+                                 alt="Почасовая активность" 
+                                 class="img-fluid rounded-3 shadow-sm clickable-graph">
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-mouse-pointer me-1"></i>Нажмите на график для увеличения
+                        </small>
                     </div>
                 </div>
             </div>
@@ -401,8 +533,14 @@
                         <i class="fas fa-car me-2"></i> Типы маршрутов
                     </div>
                     <div class="card-body">
-                        <img src="data:image/png;base64,{{ graphs.travel_modes }}" 
-                             alt="Типы маршрутов" class="img-fluid rounded-3 shadow-sm">
+                        <div class="graph-preview" onclick="openGraphModal('{{ graphs.travel_modes }}', 'Типы маршрутов')">
+                            <img src="data:image/png;base64,{{ graphs.travel_modes }}" 
+                                 alt="Типы маршрутов" 
+                                 class="img-fluid rounded-3 shadow-sm clickable-graph">
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-mouse-pointer me-1"></i>Нажмите на график для увеличения
+                        </small>
                     </div>
                 </div>
             </div>
@@ -415,15 +553,19 @@
                         <i class="fas fa-trend-up me-2"></i> Динамика по дням
                     </div>
                     <div class="card-body">
-                        <img src="data:image/png;base64,{{ graphs.daily_trends }}" 
-                             alt="Динамика запросов" class="img-fluid rounded-3 shadow-sm">
+                        <div class="graph-preview" onclick="openGraphModal('{{ graphs.daily_trends }}', 'Динамика по дням')">
+                            <img src="data:image/png;base64,{{ graphs.daily_trends }}" 
+                                 alt="Динамика запросов" 
+                                 class="img-fluid rounded-3 shadow-sm clickable-graph">
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-mouse-pointer me-1"></i>Нажмите на график для увеличения
+                        </small>
                     </div>
                 </div>
             </div>
             {% endif %}
         </div>
-
-        <!-- Детальная статистика -->
         <div class="row">
             <!-- Статистика по провайдерам -->
             <div class="col-lg-8">
@@ -669,15 +811,174 @@
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
+    <!-- Модальное окно для увеличения графиков -->
+    <div class="modal fade" id="graphModal" tabindex="-1" aria-labelledby="graphModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="graphModalLabel">Увеличенный график</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body text-center d-flex align-items-center justify-content-center">
+                    <img id="modalGraphImage" src="" alt="Увеличенный график" class="img-fluid">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="toggleZoom()">
+                        <i class="fas fa-search-plus me-2"></i>Увеличить
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="downloadGraph()">
+                        <i class="fas fa-download me-2"></i>Скачать
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="printGraph()">
+                        <i class="fas fa-print me-2"></i>Печать
+                    </button>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+
+    </div>
+
+  
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Автоматическое обновление каждые 5 минут
+        
+
+        let currentGraphBase64 = '';
+        let currentGraphTitle = '';
+        let isZoomed = false;
+
+        function openGraphModal(base64Image, title) {
+            currentGraphBase64 = base64Image;
+            currentGraphTitle = title;
+            
+            const modalImage = document.getElementById('modalGraphImage');
+            const modalLabel = document.getElementById('graphModalLabel');
+            
+            modalImage.src = `data:image/png;base64,${base64Image}`;
+            modalLabel.textContent = title;
+            modalImage.classList.remove('zoomed');
+            isZoomed = false;
+            const modal = new bootstrap.Modal(document.getElementById('graphModal'));
+            modal.show();
+        }
+        function toggleZoom() {
+            const modalImage = document.getElementById('modalGraphImage');
+            modalImage.classList.toggle('zoomed');
+            isZoomed = !isZoomed;
+            const zoomButton = document.querySelector('.modal-footer .btn-secondary');
+            zoomButton.innerHTML = isZoomed ? 
+                '<i class="fas fa-search-minus me-2"></i>Уменьшить' : 
+                '<i class="fas fa-search-plus me-2"></i>Увеличить';
+        }
+
+        // Функция для скачивания графика
+        function downloadGraph() {
+            if (!currentGraphBase64) return;
+            
+            const link = document.createElement('a');
+            const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+            const filename = `graph_${currentGraphTitle.replace(/\s+/g, '_')}_${timestamp}.png`;
+            
+            link.download = filename;
+            link.href = `data:image/png;base64,${currentGraphBase64}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showNotification('График скачивается...', 'success');
+        }
+
+        // Функция для печати графика
+        function printGraph() {
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Печать: ${currentGraphTitle}</title>
+                        <style>
+                            body { 
+                                margin: 0; 
+                                padding: 20px; 
+                                text-align: center; 
+                                font-family: Arial, sans-serif;
+                            }
+                            img { 
+                                max-width: 100%; 
+                                height: auto; 
+                                margin: 20px 0;
+                            }
+                            .header {
+                                text-align: center;
+                                margin-bottom: 30px;
+                                border-bottom: 2px solid #333;
+                                padding-bottom: 10px;
+                            }
+                            .footer {
+                                margin-top: 30px;
+                                color: #666;
+                                font-size: 12px;
+                            }
+                            @media print {
+                                .no-print { display: none; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <h2>${currentGraphTitle}</h2>
+                            <p>Дашборд аналитики - ЕкбТранспорт+</p>
+                            <p>Сформировано: ${new Date().toLocaleString('ru-RU')}</p>
+                        </div>
+                        <img src="data:image/png;base64,${currentGraphBase64}" alt="${currentGraphTitle}">
+                        <div class="footer">
+                            <p>© ЕкбТранспорт+ - Планировщик поездок</p>
+                        </div>
+                        <button class="no-print" onclick="window.print()" style="padding: 10px 20px; margin: 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            🖨️ Напечатать
+                        </button>
+                        <button class="no-print" onclick="window.close()" style="padding: 10px 20px; margin: 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            ❌ Закрыть
+                        </button>
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        // Функция для показа уведомлений
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type} position-fixed`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                min-width: 300px;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>${message}</span>
+                    <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 3000);
+        }
+
         setTimeout(function() {
             window.location.href = '?refresh=1';
         }, 300000);
         
-        // Анимация при наведении на строки таблицы
         document.addEventListener('DOMContentLoaded', function() {
             const tableRows = document.querySelectorAll('.table-custom tbody tr');
             tableRows.forEach(row => {
@@ -690,21 +991,16 @@
                 });
             });
             
-            // Плавная прокрутка
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const targetId = this.getAttribute('href');
-                    if(targetId !== '#') {
-                        document.querySelector(targetId)?.scrollIntoView({
-                            behavior: 'smooth'
-                        });
-                    }
-                });
+            document.getElementById('modalGraphImage').addEventListener('dblclick', function() {
+                toggleZoom();
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('graphModal'));
+                    if (modal) modal.hide();
+                }
             });
         });
-        
-        // Показываем время обновления
         function updateTime() {
             const now = new Date();
             document.getElementById('current-time').textContent = 

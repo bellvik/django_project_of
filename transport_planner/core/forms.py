@@ -1,4 +1,3 @@
-# core/forms.py
 from django import forms
 
 class RouteSearchForm(forms.Form):
@@ -31,5 +30,5 @@ class RouteSearchForm(forms.Form):
             ('bicycle', '🚲 На велосипеде')
         ],
         widget=forms.Select(attrs={'class': 'form-control'}),
-        initial='car'  # Значение по умолчанию
+        initial='car'  
     )
