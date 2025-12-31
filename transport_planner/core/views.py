@@ -314,12 +314,16 @@ def analytics_dashboard(request):
         travel_mode_stats = SearchHistory.objects.filter(
             is_successful=True,
             timestamp__gte=week_ago
-        ).extra(
-            select={'travel_mode': "SUBSTRING(start_query FROM 'travel_mode=([^&]+)')"}
-        ).values('travel_mode').annotate(
+        ).exclude(
+            travel_mode__isnull=True  # Исключаем NULL
+        ).exclude(
+            travel_mode=''  # Исключаем пустые строки
+        ).values(
+            'travel_mode'  # Используем поле модели
+        ).annotate(
             count=Count('id')
-        ).exclude(travel_mode__isnull=True)
-        travel_mode_stats = []
+        ).order_by('-count')
+        
         conversion_rate = (successful_searches / total_searches * 100) if total_searches > 0 else 0
         common_errors = ApiLog.objects.filter(
             response_status__gte=400
