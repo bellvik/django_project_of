@@ -53,12 +53,23 @@ class SearchHistory(models.Model):
     is_successful = models.BooleanField(default=True)
     routes_count = models.IntegerField(default=0) 
     travel_mode = models.CharField(
-        max_length=20, 
-        blank=True, 
+        max_length=20,
+        default='public',
+        verbose_name="Тип маршрута"
+    )
+    
+    transport_types = models.CharField(
+        max_length=255,
+        blank=True,
         null=True,
-        default='car',
-        verbose_name="Тип маршрута",
-        help_text="car, pedestrian, bicycle"
+        verbose_name="Типы транспорта"
+    )
+    
+    max_transfers = models.CharField(
+        max_length=10,
+        blank=True,
+        null=True,
+        verbose_name="Макс. пересадок"
     )
     def __str__(self):
         return f"{self.start_query} -> {self.end_query}"

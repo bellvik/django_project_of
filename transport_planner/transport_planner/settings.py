@@ -29,7 +29,10 @@ ALLOWED_HOSTS = []
 # transport_planner/settings.py
 USE_REAL_API = True  # Переключатель!
 TOMTOM_API_KEY = 'aSstnazvjDP54WvnmImuZfZ1XUqWgDcP'
-#TWOGIS_DEMO_KEY = '5ef601a4-d465-4d49-8a46-e8f62b1c159a'
+TWOGIS_PUBLIC_TRANSPORT_API_KEY = '5ef601a4-d465-4d49-8a46-e8f62b1c159a'
+USE_PUBLIC_TRANSPORT_API = True
+USE_2GIS_CAR_ROUTING = True
+TWOGIS_PUBLIC_TRANSPORT_URL = 'https://routing.api.2gis.com/public_transport/2.0'
 
 # Application definition
 
