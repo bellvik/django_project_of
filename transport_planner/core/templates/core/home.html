@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ЕкбТранспорт+ - Планировщик поездок по Екатеринбургу</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-          crossorigin=""/>
+    <!-- Заменили Leaflet на API 2GIS -->
+    <script src="https://maps.api.2gis.ru/2.0/loader.js?pkg=full"></script>
+    <link rel="stylesheet" type="text/css" href="https://maps.api.2gis.ru/2.0/loader.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -55,6 +55,33 @@
             overflow: hidden;
             transition: transform 0.3s ease;
             background: white;
+        }
+        
+        .stop-info-window {
+            min-width: 200px;
+            font-size: 14px;
+        }
+
+        .stop-info-window strong {
+            color: #333;
+            font-size: 16px;
+        }
+
+        .route-info-window {
+            min-width: 250px;
+            font-size: 14px;
+        }
+
+        .segment-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #007bff;
+        }
+
+        .segment-item:hover {
+            background: #e9ecef;
         }
         
         .card-custom:hover {
@@ -510,6 +537,63 @@
         .map-control-btn:hover {
             background-color: #f8f9fa;
         }
+        
+        /* Стили для маркеров 2GIS */
+        .stop-marker {
+            background-color: #ffc107;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #333;
+            font-size: 12px;
+        }
+        
+        .stop-marker-end {
+            background-color: #28a745;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 12px;
+        }
+        
+        .route-marker-start {
+            background-color: #28a745;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .route-marker-end {
+            background-color: #dc3545;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -921,50 +1005,78 @@
                                                     </div>
                                                 </div>
                                                 {% if route.segments %}
-                                                    <h6><i class="fas fa-list-ol text-warning me-2"></i>Этапы маршрута</h6>
+                                                    <h6><i class="fas fa-list-ol text-warning me-2"></i>Подробный маршрут</h6>
                                                     <div class="route-details mt-2">
                                                         {% for segment in route.segments %}
                                                             <div class="segment-item">
-                                                                <div class="d-flex justify-content-between align-items-center">
-                                                                    <div class="d-flex align-items-center">
+                                                                <div class="d-flex justify-content-between align-items-start">
+                                                                    <div class="d-flex align-items-center" style="min-width: 0;">
                                                                         {% if segment.type == 'walk' %}
-                                                                            <span class="badge bg-success me-2">🚶 Пешком</span>
+                                                                            <span class="badge bg-success me-2" style="white-space: nowrap;">
+                                                                                <i class="fas fa-walking me-1"></i>Пешком
+                                                                            </span>
                                                                         {% elif segment.type == 'transport' %}
-                                                                            {% if route.travel_mode == 'car' %}
-                                                                                <span class="badge bg-danger me-2">🚗 Автомобиль</span>
-                                                                            {% elif route.travel_mode == 'bicycle' %}
-                                                                                <span class="badge bg-info me-2">🚲 Велосипед</span>
-                                                                            {% else %}
-                                                                                <span class="badge bg-primary me-2">
+                                                                            <span class="badge bg-primary me-2" style="white-space: nowrap;">
+                                                                                {% if route.travel_mode == 'car' %}
+                                                                                    <i class="fas fa-car me-1"></i>Авто
+                                                                                {% elif route.travel_mode == 'bicycle' %}
+                                                                                    <i class="fas fa-bicycle me-1"></i>Велосипед
+                                                                                {% else %}
                                                                                     {% if segment.details.transport_type == 'bus' %}🚌
                                                                                     {% elif segment.details.transport_type == 'tram' %}🚋
                                                                                     {% elif segment.details.transport_type == 'trolleybus' %}🚎
                                                                                     {% elif segment.details.transport_type == 'subway' %}🚇
                                                                                     {% else %}🚌{% endif %}
                                                                                     {{ segment.details.transport_name|default:"Транспорт" }}
-                                                                                </span>
-                                                                            {% endif %}
+                                                                                {% endif %}
+                                                                            </span>
                                                                         {% endif %}
                                                                         
-                                                                        <div>
-                                                                            {% if segment.details.route_name %}
-                                                                                <strong>{{ segment.details.route_name }}</strong><br>
+                                                                        <div class="ms-2" style="min-width: 0;">
+                                                                            {% if segment.details.route_display %}
+                                                                                <strong class="d-block">
+                                                                                    {% if segment.type == 'transport' %}
+                                                                                        Маршрут: {{ segment.details.route_display }}
+                                                                                    {% endif %}
+                                                                                </strong>
                                                                             {% endif %}
-                                                                            {% if segment.details.text %}
-                                                                                <span class="text-muted">{{ segment.details.text }}</span><br>
-                                                                            {% endif %}
+                                                                            
                                                                             {% if segment.details.from_stop and segment.details.to_stop %}
-                                                                                <small class="text-muted">
-                                                                                    {{ segment.details.from_stop }} → {{ segment.details.to_stop }}
-                                                                                </small>
+                                                                                <div class="d-flex align-items-center mt-1">
+                                                                                    <span class="text-primary">
+                                                                                        <i class="fas fa-map-marker-alt me-1"></i>{{ segment.details.from_stop }}
+                                                                                    </span>
+                                                                                    <i class="fas fa-arrow-right mx-2 text-muted"></i>
+                                                                                    <span class="text-success">
+                                                                                        <i class="fas fa-flag-checkered me-1"></i>{{ segment.details.to_stop }}
+                                                                                    </span>
+                                                                                </div>
+                                                                            {% endif %}
+                                                                            
+                                                                            {% if segment.details.direction %}
+                                                                                <div class="mt-1">
+                                                                                    <small class="text-muted">
+                                                                                        <i class="fas fa-info-circle me-1"></i>
+                                                                                        {{ segment.details.direction }}
+                                                                                    </small>
+                                                                                </div>
+                                                                            {% endif %}
+                                                                            
+                                                                            {% if segment.details.stops_count and segment.details.stops_count > 0 %}
+                                                                                <div class="mt-1">
+                                                                                    <small class="badge bg-info">
+                                                                                        <i class="fas fa-bus me-1"></i>
+                                                                                        {{ segment.details.stops_count }} остановок
+                                                                                    </small>
+                                                                                </div>
                                                                             {% endif %}
                                                                         </div>
                                                                     </div>
                                                                     
-                                                                    <div class="text-end">
-                                                                        <div class="badge bg-dark">{{ segment.time }} мин</div>
+                                                                    <div class="text-end ms-3" style="white-space: nowrap;">
+                                                                        <div class="badge bg-dark mb-1">{{ segment.time }} мин</div>
                                                                         {% if segment.waiting_time %}
-                                                                            <div class="badge bg-secondary mt-1">
+                                                                            <div class="badge bg-secondary">
                                                                                 Ожидание: {{ segment.waiting_time }} мин
                                                                             </div>
                                                                         {% endif %}
@@ -1075,53 +1187,74 @@
             </div>
         </footer>
     </div>
+    
+    <!-- Подключаем Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-            crossorigin=""></script>
+    
     <script>
+        // Глобальные переменные для карты и данных
         let map = null;
         let routeLayers = [];
         let markers = [];
         let currentRouteIndex = -1;
         const routesData = JSON.parse('{{ routes_json|escapejs }}' || '[]');
         const geocodedPoints = JSON.parse('{{ geocoded_points_json|escapejs }}' || '{}');
+        
+        // Основная функция инициализации
         function initMap() {
-
-            const ekbCenter = [56.838011, 60.597465];
-            
-            map = L.map('map').setView(ekbCenter, 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                maxZoom: 19
-            }).addTo(map);
-            L.control.scale({imperial: false}).addTo(map);
-            if (geocodedPoints.start && geocodedPoints.end && routesData.length === 0) {
-                showPointsOnMap();
-            }
-            if (routesData.length > 0) {
-                setTimeout(() => {
-                    showRouteOnMap(0);
-                    const firstAccordion = document.getElementById('heading1');
-                    if (firstAccordion) {
-                        const button = firstAccordion.querySelector('.accordion-button');
-                        if (button && button.classList.contains('collapsed')) {
-                            button.click();
+            // Дожидаемся загрузки API 2GIS
+            DG.then(function() {
+                // ВАЖНО: Укажите ваш демо-ключ 2GIS здесь!
+                DG.key = '5ef601a4-d465-4d49-8a46-e8f62b1c159a';
+                
+                const ekbCenter = [56.838011, 60.597465];
+                
+                // Создаем карту 2GIS
+                map = DG.map('map', {
+                    center: ekbCenter,
+                    zoom: 13,
+                    zoomControl: true,
+                    geoclicker: true
+                });
+                
+                // Добавляем масштаб
+                DG.control.scale({imperial: false}).addTo(map);
+                
+                // Если есть точки, но нет маршрутов - показываем точки
+                if (geocodedPoints.start && geocodedPoints.end && routesData.length === 0) {
+                    showPointsOnMap();
+                }
+                
+                // Если есть маршруты - показываем первый
+                if (routesData.length > 0) {
+                    setTimeout(() => {
+                        showRouteOnMap(0);
+                        // Открываем первый аккордеон
+                        const firstAccordion = document.getElementById('heading1');
+                        if (firstAccordion) {
+                            const button = firstAccordion.querySelector('.accordion-button');
+                            if (button && button.classList.contains('collapsed')) {
+                                button.click();
+                            }
                         }
-                    }
-                }, 500);
-            }
+                    }, 500);
+                }
+            });
         }
+        
+        // Показать только точки начала и конца
         function showPointsOnMap() {
             clearMap();
             
             if (geocodedPoints.start) {
-                const startMarker = L.marker(
+                const startMarker = DG.marker(
                     [geocodedPoints.start.lat, geocodedPoints.start.lon],
                     {
-                        icon: L.divIcon({
+                        icon: DG.divIcon({
                             className: 'route-marker-start',
-                            html: '<div style="background-color:#28a745; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>'
+                            html: '<div style="background-color:#28a745; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center;"><i class="fas fa-play" style="color:white; font-size:12px;"></i></div>',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 15]
                         })
                     }
                 ).addTo(map);
@@ -1140,12 +1273,14 @@
             }
             
             if (geocodedPoints.end) {
-                const endMarker = L.marker(
+                const endMarker = DG.marker(
                     [geocodedPoints.end.lat, geocodedPoints.end.lon],
                     {
-                        icon: L.divIcon({
+                        icon: DG.divIcon({
                             className: 'route-marker-end',
-                            html: '<div style="background-color:#dc3545; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>'
+                            html: '<div style="background-color:#dc3545; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center;"><i class="fas fa-flag" style="color:white; font-size:12px;"></i></div>',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 15]
                         })
                     }
                 ).addTo(map);
@@ -1162,14 +1297,17 @@
                 `);
                 markers.push(endMarker);
             }
+            
             if (geocodedPoints.start && geocodedPoints.end) {
-                const bounds = L.latLngBounds([
+                const bounds = DG.latLngBounds([
                     [geocodedPoints.start.lat, geocodedPoints.start.lon],
                     [geocodedPoints.end.lat, geocodedPoints.end.lon]
                 ]);
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
         }
+        
+        // Показать маршрут на карте
         function showRouteOnMap(routeIndex) {
             if (routeIndex === currentRouteIndex) {
                 return;
@@ -1180,13 +1318,17 @@
             
             if (routesData.length > 0 && routeIndex < routesData.length) {
                 const route = routesData[routeIndex];
+                
+                // Отображаем начальную и конечную точки
                 if (geocodedPoints.start && geocodedPoints.end) {
-                    const startMarker = L.marker(
+                    const startMarker = DG.marker(
                         [geocodedPoints.start.lat, geocodedPoints.start.lon],
                         {
-                            icon: L.divIcon({
+                            icon: DG.divIcon({
                                 className: 'route-marker-start',
-                                html: '<div style="background-color:#28a745; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>'
+                                html: '<div style="background-color:#28a745; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center;"><i class="fas fa-play" style="color:white; font-size:12px;"></i></div>',
+                                iconSize: [30, 30],
+                                iconAnchor: [15, 15]
                             })
                         }
                     ).addTo(map);
@@ -1200,12 +1342,14 @@
                     `);
                     markers.push(startMarker);
                     
-                    const endMarker = L.marker(
+                    const endMarker = DG.marker(
                         [geocodedPoints.end.lat, geocodedPoints.end.lon],
                         {
-                            icon: L.divIcon({
+                            icon: DG.divIcon({
                                 className: 'route-marker-end',
-                                html: '<div style="background-color:#dc3545; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>'
+                                html: '<div style="background-color:#dc3545; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center;"><i class="fas fa-flag" style="color:white; font-size:12px;"></i></div>',
+                                iconSize: [30, 30],
+                                iconAnchor: [15, 15]
                             })
                         }
                     ).addTo(map);
@@ -1219,78 +1363,149 @@
                     `);
                     markers.push(endMarker);
                 }
-                const routeCoordinates = route.coordinates || [];
-                const travelMode = route.travel_mode || 'public';
                 
-                if (routeCoordinates.length > 0) {
-                    routeCoordinates.forEach((segmentCoords, segmentIndex) => {
-                        if (segmentCoords && segmentCoords.length > 0) {
-                            let color = '#007bff'; 
-                            let weight = 5;
-                            let opacity = 0.8;
-                            
-                            // Определяем цвет в зависимости от типа сегмента
-                            if (travelMode === 'car') {
-                                color = '#ff3333'; // Красный для авто
-                            } else if (travelMode === 'bicycle') {
-                                color = '#17a2b8'; // Голубой для велосипеда
-                            } else if (travelMode === 'pedestrian') {
-                                color = '#28a745'; // Зеленый для пешком
-                            } else {
-                                // Для общественного транспорта определяем по сегментам
-                                const segment = route.segments?.[segmentIndex];
-                                if (segment && segment.type === 'walk') {
-                                    color = '#28a745'; // Зеленый для пеших участков
-                                    weight = 3;
-                                } else {
-                                    color = '#007bff'; // Синий для транспорта
+                // Отображаем сегменты маршрута
+                const routeCoordinates = route.coordinates || [];
+                
+                if (routeCoordinates.length > 0 && routeCoordinates[0].length > 0) {
+                    // Определяем цвет линии в зависимости от типа маршрута
+                    let lineColor = '#007bff';
+                    let dashArray = null;
+                    
+                    if (route.travel_mode === 'car') {
+                        lineColor = '#ff3333';
+                    } else if (route.travel_mode === 'bicycle') {
+                        lineColor = '#17a2b8';
+                    } else if (route.travel_mode === 'pedestrian') {
+                        lineColor = '#28a745';
+                        dashArray = '10, 10';
+                    }
+                    
+                    // Создаем полилинию для всего маршрута
+                    const polyline = DG.polyline(routeCoordinates[0], {
+                        color: lineColor,
+                        weight: 5,
+                        opacity: 0.8,
+                        lineJoin: 'round',
+                        lineCap: 'round',
+                        dashArray: dashArray
+                    }).addTo(map);
+                    
+                    // Добавляем всплывающую подсказку
+                    polyline.bindPopup(`
+                        <div class="route-info-window">
+                            <strong>${route.mode_display || 'Маршрут'}</strong><br>
+                            <small>Время: ${route.total_time} мин</small><br>
+                            <small>Расстояние: ${route.total_distance ? Math.round(route.total_distance) + ' м' : 'N/A'}</small>
+                        </div>
+                    `);
+                    
+                    routeLayers.push(polyline);
+                    
+                    // Добавляем маркеры для остановок
+                    if (route.segments) {
+                        let addedStops = new Set();
+                        
+                        route.segments.forEach((segment, segmentIndex) => {
+                            if (segment.type === 'transport' && segment.details.from_stop) {
+                                let stopCoords = null;
+                                
+                                if (segment.details.from_stop_coords) {
+                                    stopCoords = segment.details.from_stop_coords;
+                                } else if (routeCoordinates[0] && routeCoordinates[0].length > 0) {
+                                    const totalSegments = route.segments.filter(s => s.type === 'transport').length;
+                                    const segmentRatio = segmentIndex / Math.max(totalSegments, 1);
+                                    const stopIndex = Math.floor(routeCoordinates[0].length * segmentRatio);
+                                    stopCoords = routeCoordinates[0][Math.min(stopIndex, routeCoordinates[0].length - 1)];
                                 }
-                            }
-                            
-                            // Создаем полилинию
-                            const polyline = L.polyline(segmentCoords, {
-                                color: color,
-                                weight: weight,
-                                opacity: opacity,
-                                lineJoin: 'round',
-                                lineCap: 'round'
-                            }).addTo(map);
-                            
-                            // Добавляем всплывающую подсказку
-                            let popupContent = '';
-                            if (route.segments && route.segments[segmentIndex]) {
-                                const seg = route.segments[segmentIndex];
-                                if (seg.type === 'walk') {
-                                    popupContent = `🚶 Пешком: ${seg.time} мин<br>${seg.details?.text || ''}`;
-                                } else if (seg.type === 'transport') {
-                                    if (travelMode === 'car') {
-                                        popupContent = `🚗 Автомобиль: ${seg.time} мин`;
-                                    } else if (travelMode === 'bicycle') {
-                                        popupContent = `🚲 Велосипед: ${seg.time} мин`;
-                                    } else {
-                                        popupContent = `🚌 Транспорт: ${seg.time} мин<br>${seg.details?.route_name || ''}`;
+                                
+                                if (stopCoords && geocodedPoints.start) {
+                                    const startLat = geocodedPoints.start.lat;
+                                    const startLon = geocodedPoints.start.lon;
+                                    const stopLat = stopCoords[0];
+                                    const stopLon = stopCoords[1];
+                                    
+                                    const latDiff = Math.abs(startLat - stopLat);
+                                    const lonDiff = Math.abs(startLon - stopLon);
+                                    const distance = Math.sqrt(latDiff * latDiff + lonDiff * lonDiff);
+                                    
+                                    if (distance < 0.001 && segmentIndex === 0) {
+                                        stopCoords = [
+                                            stopLat + 0.001,
+                                            stopLon + 0.001
+                                        ];
+                                    }
+                                }
+                                
+                                if (stopCoords) {
+                                    const stopKey = `${stopCoords[0].toFixed(6)}_${stopCoords[1].toFixed(6)}`;
+                                    
+                                    if (!addedStops.has(stopKey)) {
+                                        const stopMarker = DG.marker(stopCoords, {
+                                            icon: DG.divIcon({
+                                                className: 'stop-marker',
+                                                html: `<div style="background-color:#ffc107; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; font-weight:bold; color:#333; font-size:12px;">${segmentIndex + 1}</div>`,
+                                                iconSize: [30, 30],
+                                                iconAnchor: [15, 15]
+                                            })
+                                        }).addTo(map);
+                                        
+                                        stopMarker.bindPopup(`
+                                            <div class="stop-info-window">
+                                                <strong>🚏 ${segment.details.from_stop}</strong><br>
+                                                <small>${segment.details.transport_name || 'Транспорт'}</small><br>
+                                                <small>Маршрут: ${segment.details.route_display || 'Не указан'}</small>
+                                                ${segment.details.stops_count ? `<br><small>${segment.details.stops_count} остановок</small>` : ''}
+                                            </div>
+                                        `);
+                                        markers.push(stopMarker);
+                                        addedStops.add(stopKey);
                                     }
                                 }
                             }
                             
-                            if (popupContent) {
-                                polyline.bindPopup(popupContent);
+                            if (segmentIndex === route.segments.length - 1 && segment.type === 'transport' && segment.details.to_stop) {
+                                let stopCoords = null;
+                                
+                                if (segment.details.to_stop_coords) {
+                                    stopCoords = segment.details.to_stop_coords;
+                                } else if (geocodedPoints.end) {
+                                    stopCoords = [geocodedPoints.end.lat, geocodedPoints.end.lon];
+                                }
+                                
+                                if (stopCoords) {
+                                    const stopKey = `${stopCoords[0].toFixed(6)}_${stopCoords[1].toFixed(6)}`;
+                                    
+                                    if (!addedStops.has(stopKey)) {
+                                        const stopMarker = DG.marker(stopCoords, {
+                                            icon: DG.divIcon({
+                                                className: 'stop-marker-end',
+                                                html: '<div style="background-color:#28a745; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; font-weight:bold; color:white; font-size:12px;">🏁</div>',
+                                                iconSize: [30, 30],
+                                                iconAnchor: [15, 15]
+                                            })
+                                        }).addTo(map);
+                                        
+                                        stopMarker.bindPopup(`
+                                            <div class="stop-info-window">
+                                                <strong>🏁 ${segment.details.to_stop}</strong><br>
+                                                <small>Конечная остановка</small>
+                                            </div>
+                                        `);
+                                        markers.push(stopMarker);
+                                        addedStops.add(stopKey);
+                                    }
+                                }
                             }
-                            
-                            routeLayers.push(polyline);
-                        }
-                    });
+                        });
+                    }
                     
                     // Центрируем карту на маршруте
-                    const allPoints = routeCoordinates.flat();
-                    if (allPoints.length > 0) {
-                        const bounds = L.latLngBounds(allPoints);
-                        map.fitBounds(bounds, { padding: [50, 50] });
-                    }
+                    const bounds = DG.latLngBounds(routeCoordinates[0]);
+                    map.fitBounds(bounds, { padding: [50, 50] });
                 } else {
-                    // Если нет координат, просто показываем точки
                     if (geocodedPoints.start && geocodedPoints.end) {
-                        const bounds = L.latLngBounds([
+                        const bounds = DG.latLngBounds([
                             [geocodedPoints.start.lat, geocodedPoints.start.lon],
                             [geocodedPoints.end.lat, geocodedPoints.end.lon]
                         ]);
@@ -1379,12 +1594,10 @@
                     return;
                 }
                 
-                // Отменяем предыдущий таймаут
                 if (timeoutId) {
                     clearTimeout(timeoutId);
                 }
                 
-                // Устанавливаем новый таймаут
                 timeoutId = setTimeout(() => {
                     fetchAutocompleteResults(query, itemsContainer, input);
                 }, 300);
@@ -1411,7 +1624,6 @@
                 }
             });
             
-            // Закрываем автодополнение при клике вне его
             document.addEventListener('click', function(e) {
                 if (!itemsContainer.contains(e.target) && e.target !== input) {
                     itemsContainer.innerHTML = '';
@@ -1444,7 +1656,6 @@
                                 input.value = item.label;
                                 container.innerHTML = '';
                                 
-                                // Сохраняем координаты в data-атрибуты
                                 input.dataset.lat = item.lat;
                                 input.dataset.lon = item.lon;
                             });
@@ -1490,10 +1701,8 @@
         
         // Установка режима передвижения
         function setTravelMode(mode) {
-            // Обновляем скрытое поле
             document.getElementById('id_travel_mode').value = mode;
             
-            // Обновляем активную кнопку
             document.querySelectorAll('.switch-btn').forEach(btn => {
                 if (btn.dataset.mode === mode) {
                     btn.classList.add('active');
@@ -1502,7 +1711,6 @@
                 }
             });
             
-            // Показываем/скрываем фильтры транспорта
             const filtersPanel = document.getElementById('transport-filters');
             if (mode === 'public') {
                 filtersPanel.style.display = 'block';
@@ -1513,7 +1721,6 @@
         
         // Обновление фильтров транспорта
         function updateTransportFilters() {
-            // Снимаем выбор с "Все виды", если выбраны конкретные типы
             const allCheckbox = document.getElementById('transport_all');
             const specificCheckboxes = document.querySelectorAll('input[name="transport_types"]:not([value="all"])');
             const checkedSpecific = Array.from(specificCheckboxes).filter(cb => cb.checked);
@@ -1521,9 +1728,6 @@
             if (checkedSpecific.length > 0) {
                 allCheckbox.checked = false;
             }
-            
-            // Можно добавить автоматическую отправку формы
-            // document.getElementById('route-form').submit();
         }
         
         // Переключение всех типов транспорта
@@ -1549,7 +1753,7 @@
         
         // Инициализация при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
-            // Инициализируем карту
+            // Инициализируем карту 2GIS
             initMap();
             
             // Настраиваем автодополнение
@@ -1563,17 +1767,14 @@
                     const startInput = document.getElementById('id_start_point');
                     const endInput = document.getElementById('id_end_point');
                     
-                    // Проверяем, что поля не пустые
                     if (!startInput.value.trim() || !endInput.value.trim()) {
                         e.preventDefault();
                         alert('Пожалуйста, заполните оба поля: "Откуда" и "Куда"');
                         return;
                     }
                     
-                    // Показываем индикатор загрузки
                     showLoading();
                     
-                    // Прячем индикатор через 10 секунд на всякий случай
                     setTimeout(hideLoading, 10000);
                 });
             }
@@ -1581,7 +1782,6 @@
             // Добавляем обработчик для кнопок аккордеона
             document.querySelectorAll('.accordion-button').forEach((button, index) => {
                 button.addEventListener('click', function() {
-                    // Небольшая задержка для анимации
                     setTimeout(() => {
                         showRouteOnMap(index);
                     }, 100);
@@ -1603,7 +1803,6 @@
         
         function handleFullscreenChange() {
             if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
-                // Выход из полноэкранного режима
                 setTimeout(resetMapView, 100);
             }
         }

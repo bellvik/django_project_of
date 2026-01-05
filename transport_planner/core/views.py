@@ -180,6 +180,18 @@ def home(request):
                             mode_icons = {
                                 'car': '🚗', 'pedestrian': '🚶', 'bicycle': '🚲'
                             }
+                            if travel_mode == 'car' and 'instructions' not in route:
+                                route['instructions'] = []
+                                for seg_idx, segment in enumerate(route.get('segments', [])):
+                                    instruction = {
+                                        'step': seg_idx + 1,
+                                        'action': segment.get('details', {}).get('text', 'Продолжайте движение'),
+                                        'direction': segment.get('details', {}).get('direction', ''),
+                                        'distance': segment.get('details', {}).get('distance', ''),
+                                        'time': f"{segment.get('time', 0)} мин",
+                                        'street': segment.get('details', {}).get('street', '')
+                                    }
+                                    route['instructions'].append(instruction)
                             route['icon'] = mode_icons.get(travel_mode, '📍')
                         mode_display_map = {
                             'public': 'Общественный транспорт',
@@ -212,7 +224,6 @@ def home(request):
                         transport_types=','.join(applied_filters.get('transport_types', [])) 
                             if applied_filters.get('transport_types') else '',
                         max_transfers=applied_filters.get('max_transfers', ''),
-                        source=routes_data.get('source', 'unknown') if routes_data else 'unknown'
                     )
                     logger.debug(f"Сохранено в историю поиска: ID {search_history.id}")
                 except Exception as e:
