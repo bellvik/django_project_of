@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import requests
 from django.conf import settings
 import time
+import logging
 
 class BaseRoutingService(ABC):
     """Абстрактный класс для всех сервисов маршрутизации"""
@@ -71,115 +72,116 @@ class StubRoutingService(BaseRoutingService):
         return stub_response
 
 class TomTomRoutingService(BaseRoutingService):
-    """Реальный сервис маршрутизации через TomTom API"""
-    
     def __init__(self, api_key, travel_mode='car'):
         self.api_key = api_key
         self.default_travel_mode = travel_mode
-    def _get_mode_icon(self, mode):
-        icons = {'car': '🚗', 'pedestrian': '🚶', 'bicycle': '🚲'}
-        return icons.get(mode, '📍')
-    
-    def _get_mode_name(self, mode):
-        names = {'car': 'автомобиле', 'pedestrian': 'пешком', 'bicycle': 'велосипеде'}
-        return names.get(mode, 'транспорте')
-    
-    def get_routes(self, start_lat: float, start_lon: float, 
-                   end_lat: float, end_lon: float, **kwargs):
-        travel_mode = kwargs.get('travel_mode', self.default_travel_mode)
-        
-        print(f"[DEBUG TOMTOM] Вызван с параметрами: mode={travel_mode}, coords=({start_lat},{start_lon})->({end_lat},{end_lon})")
-        print(f"[DEBUG TOMTOM] Дополнительные параметры: {kwargs}")
-        
+        self.logger = logging.getLogger(__name__)
+    def get_routes(self, start_lat: float, start_lon: float, end_lat: float, end_lon: float, **kwargs):
+        # Получаем режим движения из параметров, по умолчанию 'car'
+        travel_mode = kwargs.get('travel_mode', self.default_travel_mode).lower()
+
+        # Маппинг наших режимов на значения TomTom API
+        mode_to_tomtom = {
+            'car': 'car',
+            'pedestrian': 'pedestrian',
+            'bicycle': 'bicycle'
+        }
+        tomtom_travel_mode = mode_to_tomtom.get(travel_mode, 'car')
+
+        self.logger.info(f"[TomTom] Расчет маршрута для режима: {travel_mode} (TomTom: {tomtom_travel_mode})")
+
         try:
             locations = f"{start_lat},{start_lon}:{end_lat},{end_lon}"
             url = f"https://api.tomtom.com/routing/1/calculateRoute/{locations}/json"
-            
+
             params = {
                 'key': self.api_key,
-                'traffic': 'true' if travel_mode == 'car' else 'false',
-                'travelMode': travel_mode, 
+                'travelMode': tomtom_travel_mode,  # Ключевой параметр
                 'routeType': 'fastest',
+                'traffic': 'true' if travel_mode == 'car' else 'false',  # Пробки только для авто
                 'instructionsType': 'text',
                 'language': 'ru-RU',
             }
-            
+
+            # Для пешеходов и велосипедистов можно добавить avoid
+            if travel_mode in ['pedestrian', 'bicycle']:
+                params['avoid'] = 'motorways'  # Избегать магистралей
+
             response = requests.get(url, params=params)
             response.raise_for_status()
             api_data = response.json()
-            return self._parse_tomtom_response(api_data, travel_mode)
-            
+            return self._parse_tomtom_response(api_data, travel_mode)  # Передаем наш режим
+
         except requests.exceptions.RequestException as e:
-            print(f"Ошибка TomTom Routing API: {e}")
+            self.logger.error(f"Ошибка TomTom Routing API: {e}")
             raise Exception(f"TomTom Routing API недоступен: {e}")
-
     def _parse_tomtom_response(self, api_data, travel_mode):
-        """Преобразует ответ TomTom API в наш формат с координатами для карты."""
-    
-        parsed_response = {
-            "result": [],
-            "source": "tomtom",
-            "travel_mode": travel_mode
-        }
+        """Преобразует ответ TomTom API в наш формат."""
+        parsed_response = {"result": [], "source": "tomtom"}
 
-        if 'routes' in api_data and len(api_data['routes']) > 0:
+        if 'routes' in api_data and api_data['routes']:
             route = api_data['routes'][0]
             summary = route.get('summary', {})
-            route_coordinates = []
-            try:
-                for leg in route.get('legs', []):
-                    leg_points = []
-                    for point in leg.get('points', []):
-                        if 'latitude' in point and 'longitude' in point:
-                            leg_points.append([point['latitude'], point['longitude']])
-                    if leg_points:
-                        route_coordinates.append(leg_points)
-            except Exception as e:
-                print(f"⚠️ Не удалось извлечь координаты из TomTom: {e}")
-                route_coordinates = [[]]  
-            
-            
-            step_by_step_instructions = []
             guidance = route.get('guidance', {})
-            for instruction in guidance.get('instructions', []):
-                step = {
-                    'street': instruction.get('roadName', ''),
-                    'direction': instruction.get('message', ''),
-                    'distance': instruction.get('routeOffsetInMeters', 0),
-                    'time': instruction.get('travelTimeInSeconds', 0) // 60,
-                }
-                if step['distance'] > 0 or step['time'] > 0:
-                    step_by_step_instructions.append(step)
-            
-            
-            travel_time = summary.get('travelTimeInSeconds', 0)
-            traffic_delay = summary.get('trafficDelayInSeconds', 0) if travel_mode == 'car' else 0
-            total_time_minutes = (travel_time + traffic_delay) // 60
-            
-            mode_icons = {'car': '🚗', 'pedestrian': '🚶', 'bicycle': '🚲'}
-            mode_names = {'car': 'автомобиле', 'pedestrian': 'пешком', 'bicycle': 'велосипеде'}
-            
+
+            # Извлечение координат для отрисовки на карте
+            route_coordinates = []
+            for leg in route.get('legs', []):
+                leg_points = [[point.get('latitude'), point.get('longitude')] for point in leg.get('points', [])]
+                if leg_points:
+                    route_coordinates.append(leg_points)
+
+            # Маппинг для отображения
+            mode_info = {
+                'car': {'icon': '🚗', 'display': 'На машине', 'type': 'transport'},
+                'pedestrian': {'icon': '🚶', 'display': 'Пешком', 'type': 'walk'},
+                'bicycle': {'icon': '🚲', 'display': 'На велосипеде', 'type': 'transport'}
+            }
+            info = mode_info.get(travel_mode, mode_info['car'])
+
+            # Расчет времени (в минутах)
+            travel_time = summary.get('travelTimeInSeconds', 0) // 60
+            traffic_delay = summary.get('trafficDelayInSeconds', 0) // 60 if travel_mode == 'car' else 0
+            total_time = travel_time + traffic_delay
+            instructions_list = []
+            if guidance and 'instructions' in guidance:
+                for step in guidance['instructions']:
+                    instruction_text = step.get('message', '')  # Текст инструкции
+                    point_index = step.get('pointIndex')  # Связь с координатой маршрута
+                    # Можно также извлечь расстояние до маневра: step.get('routeOffsetInMeters')
+                    instructions_list.append({
+                        'text': instruction_text,
+                        'index': point_index
+                    })
+
+            # Создание сегментов на основе инструкций (вместо одного общего)
+            segments = []
+            for instr in instructions_list:
+                segments.append({
+                    "type": "instruction",
+                    "time": 0,  # Время для каждого шага можно рассчитать сложнее
+                    "details": {
+                        "text": instr['text'],
+                        "direction": "Следуйте инструкции",
+                        "street": "",  # Можно извлечь из step.get('street', '')
+                        "distance": "" # Можно извлечь из step.get('routeOffsetInMeters', '')
+                    }
+                })
+
             route_data = {
                 "id": f"tomtom_{travel_mode}_route",
-                "total_time": total_time_minutes,
+                "total_time": total_time,
                 "total_distance": summary.get('lengthInMeters', 0),
                 "travel_mode": travel_mode,
-                "icon": mode_icons.get(travel_mode, '📍'),
-                "traffic_delay": traffic_delay // 60,
-                "coordinates": route_coordinates,  
-                "instructions": step_by_step_instructions,
-                "segments": [{
-                    "type": "transport" if travel_mode in ['car', 'bicycle'] else 'walk',
-                    "time": total_time_minutes,
-                    "details": {
-                        "route_name": f"Маршрут на {mode_names.get(travel_mode, 'транспорте')}",
-                        "note": "Пошаговые инструкции доступны ниже."
-                    }
-                }]
+                "icon": info['icon'],
+                "mode_display": info['display'],
+                "traffic_delay": traffic_delay,
+                "coordinates": route_coordinates,
+                "segments": segments,  # <-- Используем новый список сегментов
+                "instructions": instructions_list 
             }
-            
             parsed_response["result"].append(route_data)
-        
+
         return parsed_response
 
 

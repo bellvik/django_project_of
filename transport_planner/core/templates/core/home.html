@@ -1,600 +1,15 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ЕкбТранспорт+ - Планировщик поездок по Екатеринбургу</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Заменили Leaflet на API 2GIS -->
     <script src="https://maps.api.2gis.ru/2.0/loader.js?pkg=full"></script>
     <link rel="stylesheet" type="text/css" href="https://maps.api.2gis.ru/2.0/loader.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3a0ca3;
-            --success-color: #06d6a0;
-            --warning-color: #ffd166;
-            --danger-color: #ef476f;
-            --info-color: #118ab2;
-            --light-color: #f8f9fa;
-            --dark-color: #212529;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-            padding-bottom: 50px;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            color: white;
-            padding: 2rem 0;
-            margin-bottom: 2rem;
-            border-radius: 0 0 20px 20px;
-            box-shadow: 0 10px 30px rgba(67, 97, 238, 0.3);
-        }
-        
-        .header h1 {
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-        }
-        
-        .header .subtitle {
-            opacity: 0.9;
-            font-size: 1.1rem;
-        }
-        
-        .card-custom {
-            border: none;
-            border-radius: 16px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-            margin-bottom: 1.5rem;
-            overflow: hidden;
-            transition: transform 0.3s ease;
-            background: white;
-        }
-        
-        .stop-info-window {
-            min-width: 200px;
-            font-size: 14px;
-        }
-
-        .stop-info-window strong {
-            color: #333;
-            font-size: 16px;
-        }
-
-        .route-info-window {
-            min-width: 250px;
-            font-size: 14px;
-        }
-
-        .segment-item {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-left: 4px solid #007bff;
-        }
-
-        .segment-item:hover {
-            background: #e9ecef;
-        }
-        
-        .card-custom:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
-        }
-        
-        .card-header-custom {
-            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
-            color: white;
-            border: none;
-            padding: 1.2rem 1.5rem;
-            font-weight: 700;
-            font-size: 1.2rem;
-            position: relative;
-        }
-        
-        .card-header-custom::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
-        }
-        
-        .form-control-custom {
-            border: 2px solid #e9ecef;
-            border-radius: 12px;
-            padding: 0.75rem 1rem;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-        
-        .form-control-custom:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
-        }
-        
-        .btn-primary-custom {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            border: none;
-            border-radius: 12px;
-            padding: 0.75rem 2rem;
-            font-weight: 600;
-            font-size: 1.1rem;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-primary-custom:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 7px 20px rgba(67, 97, 238, 0.4);
-        }
-        
-        #map {
-            height: 500px;
-            width: 100%;
-            border-radius: 12px;
-            border: 1px solid #dee2e6;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-            z-index: 1;
-        }
-        
-        @media (max-width: 768px) {
-            #map {
-                height: 350px;
-            }
-        }
-        
-        .autocomplete-container {
-            position: relative;
-        }
-        
-        .autocomplete-items {
-            position: absolute;
-            border: 1px solid #d4d4d4;
-            border-bottom: none;
-            border-top: none;
-            z-index: 1000;
-            top: 100%;
-            left: 0;
-            right: 0;
-            max-height: 250px;
-            overflow-y: auto;
-            background-color: #fff;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            border-radius: 0 0 8px 8px;
-        }
-        
-        .autocomplete-item {
-            padding: 12px;
-            cursor: pointer;
-            background-color: #fff;
-            border-bottom: 1px solid #f1f1f1;
-            font-size: 0.95rem;
-            transition: background-color 0.2s ease;
-        }
-        
-        .autocomplete-item:hover {
-            background-color: #e9ecef;
-        }
-        
-        .autocomplete-item.active {
-            background-color: var(--primary-color);
-            color: white;
-        }
-        
-        .route-accordion .accordion-button {
-            font-weight: 600;
-            padding: 1.2rem 1.5rem;
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px !important;
-            transition: all 0.3s ease;
-        }
-        
-        .route-accordion .accordion-button:not(.collapsed) {
-            background-color: #e7f1ff;
-            color: var(--primary-color);
-            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.1);
-        }
-        
-        .route-accordion .accordion-button::after {
-            transform: rotate(0deg);
-            transition: transform 0.3s ease;
-        }
-        
-        .route-accordion .accordion-button:not(.collapsed)::after {
-            transform: rotate(180deg);
-        }
-        
-        .route-badge {
-            font-size: 0.85rem;
-            padding: 0.4rem 0.8rem;
-            border-radius: 50px;
-            font-weight: 600;
-            margin-left: 0.5rem;
-        }
-        
-        .transport-icon {
-            font-size: 1.2rem;
-            margin-right: 0.5rem;
-            vertical-align: middle;
-        }
-        
-        .segment-item {
-            padding: 0.8rem 0;
-            border-bottom: 1px dashed #dee2e6;
-            margin-bottom: 0.5rem;
-        }
-        
-        .segment-item:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
-        
-        .filters-panel {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border: 1px solid #dee2e6;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-top: 1.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-        
-        .filter-group {
-            margin-bottom: 1.2rem;
-        }
-        
-        .filter-group label {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: #495057;
-            display: block;
-        }
-        
-        .filter-checkbox {
-            display: inline-block;
-            margin-right: 0.8rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .filter-checkbox input[type="checkbox"] {
-            display: none;
-        }
-        
-        .filter-checkbox label {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            background-color: white;
-            border: 2px solid #dee2e6;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        
-        .filter-checkbox input[type="checkbox"]:checked + label {
-            background-color: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-            box-shadow: 0 2px 8px rgba(67, 97, 238, 0.2);
-        }
-        
-        .filter-checkbox label:hover {
-            border-color: var(--primary-color);
-        }
-        
-        .applied-filters {
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-            border-left: 4px solid var(--info-color);
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            margin: 1rem 0;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-        }
-        
-        .applied-filters h6 {
-            color: var(--info-color);
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-        
-        .applied-filters .badge {
-            margin-right: 0.5rem;
-            margin-bottom: 0.5rem;
-            font-size: 0.85rem;
-            padding: 0.4rem 0.8rem;
-        }
-        
-        .stats-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            text-align: center;
-            border-top: 4px solid var(--primary-color);
-        }
-        
-        .stats-card .stat-value {
-            font-size: 2.2rem;
-            font-weight: 800;
-            color: var(--primary-color);
-            margin: 0.5rem 0;
-        }
-        
-        .stats-card .stat-label {
-            font-size: 0.9rem;
-            color: #6c757d;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .info-box {
-            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-            border-left: 4px solid #ffc107;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
-        }
-        
-        .info-box i {
-            color: #ffc107;
-            margin-right: 0.5rem;
-        }
-        
-        .success-box {
-            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-            border-left: 4px solid #28a745;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
-        }
-        
-        .success-box i {
-            color: #28a745;
-            margin-right: 0.5rem;
-        }
-        
-        .error-box {
-            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-            border-left: 4px solid #dc3545;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
-        }
-        
-        .error-box i {
-            color: #dc3545;
-            margin-right: 0.5rem;
-        }
-        
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(255, 255, 255, 0.8);
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            display: none;
-        }
-        
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 6px solid #f3f3f3;
-            border-top: 6px solid var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .switch-buttons {
-            display: flex;
-            border: 2px solid #e9ecef;
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 1.5rem;
-        }
-        
-        .switch-btn {
-            flex: 1;
-            padding: 0.75rem;
-            background: white;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        
-        .switch-btn.active {
-            background: var(--primary-color);
-            color: white;
-        }
-        
-        .switch-btn:not(.active):hover {
-            background: #f8f9fa;
-        }
-        
-        .switch-btn:not(:last-child) {
-            border-right: 2px solid #e9ecef;
-        }
-        
-        .route-number {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 30px;
-            height: 30px;
-            background: var(--primary-color);
-            color: white;
-            border-radius: 50%;
-            font-weight: bold;
-            margin-right: 0.5rem;
-        }
-        
-        .mode-indicator {
-            display: inline-block;
-            padding: 0.3rem 0.8rem;
-            background: rgba(67, 97, 238, 0.1);
-            color: var(--primary-color);
-            border-radius: 50px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-left: 0.5rem;
-        }
-        
-        .transport-badge {
-            display: inline-block;
-            padding: 0.3rem 0.6rem;
-            background: #e9ecef;
-            color: #495057;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            margin-right: 0.3rem;
-            margin-bottom: 0.3rem;
-        }
-        
-        .advanced-options {
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px dashed #dee2e6;
-        }
-        
-        .legend {
-            background: white;
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-            margin-top: 1rem;
-            font-size: 0.9rem;
-        }
-        
-        .legend-item {
-            display: inline-flex;
-            align-items: center;
-            margin-right: 1rem;
-        }
-        
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            margin-right: 0.5rem;
-        }
-        
-        .no-results {
-            text-align: center;
-            padding: 3rem 1rem;
-            color: #6c757d;
-        }
-        
-        .no-results i {
-            font-size: 4rem;
-            color: #dee2e6;
-            margin-bottom: 1rem;
-        }
-        
-        .map-controls {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            background: white;
-            padding: 0.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        
-        .map-control-btn {
-            background: none;
-            border: none;
-            padding: 0.5rem;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: background-color 0.2s ease;
-        }
-        
-        .map-control-btn:hover {
-            background-color: #f8f9fa;
-        }
-        
-        /* Стили для маркеров 2GIS */
-        .stop-marker {
-            background-color: #ffc107;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: #333;
-            font-size: 12px;
-        }
-        
-        .stop-marker-end {
-            background-color: #28a745;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: white;
-            font-size: 12px;
-        }
-        
-        .route-marker-start {
-            background-color: #28a745;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-        }
-        
-        .route-marker-end {
-            background-color: #dc3545;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
     <div id="loadingOverlay" class="loading-overlay">
@@ -602,31 +17,17 @@
         <h4 class="mt-3">Ищем лучшие маршруты...</h4>
         <p class="text-muted">Это может занять несколько секунд</p>
     </div>
+    
     <header class="header">
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h1>
-                        <i class="fas fa-bus me-2"></i>
-                        ЕкбТранспорт+
-                    </h1>
-                    <p class="subtitle">
-                        Интеллектуальный планировщик поездок по Екатеринбургу с учетом пробок и общественного транспорта
-                    </p>
+                    <h1><i class="fas fa-bus me-2"></i>ЕкбТранспорт+</h1>
+                    <p class="subtitle">Интеллектуальный планировщик поездок по Екатеринбургу с учетом пробок и общественного транспорта</p>
                 </div>
                 <div class="col-md-4 text-md-end">
                     <div class="d-inline-flex align-items-center gap-2">
-                        {% if use_real_api %}
-                            <span class="badge bg-success">
-                                <i class="fas fa-plug me-1"></i>Реальные API
-                            </span>
-                        {% else %}
-                            <span class="badge bg-warning">
-                                <i class="fas fa-code me-1"></i>Тестовый режим
-                            </span>
-                        {% endif %}
-                        
-                        <a href="/admin/analytics/" class="btn btn-light btn-sm ms-2">
+                        <a href="/admin/analytics/" class="btn btn-light btn-sm">
                             <i class="fas fa-chart-line me-1"></i>Аналитика
                         </a>
                     </div>
@@ -634,8 +35,10 @@
             </div>
         </div>
     </header>
+    
     <div class="container">
         <div class="row">
+            <!-- Левая колонка - форма поиска -->
             <div class="col-lg-4">
                 <div class="card-custom">
                     <div class="card-header-custom">
@@ -644,6 +47,8 @@
                     <div class="card-body">
                         <form method="get" id="route-form" action="{% url 'home' %}">
                             {% csrf_token %}
+                            
+                            <!-- Поле "Откуда" -->
                             <div class="form-group mb-3 autocomplete-container">
                                 <label for="id_start_point" class="form-label fw-semibold">
                                     <i class="fas fa-map-marker-alt text-danger me-1"></i>Откуда
@@ -658,6 +63,8 @@
                                        autocomplete="off">
                                 <div id="start-autocomplete" class="autocomplete-items"></div>
                             </div>
+                            
+                            <!-- Поле "Куда" -->
                             <div class="form-group mb-3 autocomplete-container">
                                 <label for="id_end_point" class="form-label fw-semibold">
                                     <i class="fas fa-map-marker-alt text-success me-1"></i>Куда
@@ -672,34 +79,39 @@
                                        autocomplete="off">
                                 <div id="end-autocomplete" class="autocomplete-items"></div>
                             </div>
+                            
+                            <!-- Тип маршрута -->
                             <div class="form-group mb-3">
-                                <label class="form-label fw-semibold">
-                                    <i class="fas fa-route me-1"></i>Тип маршрута
-                                </label>
-                                <div class="switch-buttons">
-                                    <button type="button" class="switch-btn {% if form.travel_mode.value == 'public' or not form.travel_mode.value %}active{% endif %}" 
-                                            data-mode="public" onclick="setTravelMode('public')">
-                                        <i class="fas fa-bus me-1"></i>Общественный
-                                    </button>
-                                    <button type="button" class="switch-btn {% if form.travel_mode.value == 'car' %}active{% endif %}" 
-                                            data-mode="car" onclick="setTravelMode('car')">
-                                        <i class="fas fa-car me-1"></i>Авто
-                                    </button>
-                                    <button type="button" class="switch-btn {% if form.travel_mode.value == 'pedestrian' %}active{% endif %}" 
-                                            data-mode="pedestrian" onclick="setTravelMode('pedestrian')">
-                                        <i class="fas fa-walking me-1"></i>Пешком
-                                    </button>
-                                    <button type="button" class="switch-btn {% if form.travel_mode.value == 'bicycle' %}active{% endif %}" 
-                                            data-mode="bicycle" onclick="setTravelMode('bicycle')">
-                                        <i class="fas fa-bicycle me-1"></i>Велосипед
-                                    </button>
-                                </div>
-                                <input type="hidden" name="travel_mode" id="id_travel_mode" 
-                                       value="{{ form.travel_mode.value|default:'public' }}">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-route me-1"></i>Тип маршрута
+                            </label>
+                            <div class="switch-buttons">
+                                <button type="button" class="switch-btn {% if form.travel_mode.value == 'public' or not form.travel_mode.value %}active{% endif %}" 
+                                        data-mode="public" onclick="setTravelMode('public')">
+                                    <i class="fas fa-bus me-1"></i>Общественный транспорт
+                                </button>
+                                <button type="button" class="switch-btn {% if form.travel_mode.value == 'car' %}active{% endif %}" 
+                                        data-mode="car" onclick="setTravelMode('car')">
+                                    <i class="fas fa-car me-1"></i>Автомобиль
+                                </button>
+                                <button type="button" class="switch-btn {% if form.travel_mode.value == 'pedestrian' %}active{% endif %}" 
+                                        data-mode="pedestrian" onclick="setTravelMode('pedestrian')">
+                                    <i class="fas fa-walking me-1"></i>Пешком
+                                </button>
+                                <button type="button" class="switch-btn {% if form.travel_mode.value == 'bicycle' %}active{% endif %}" 
+                                        data-mode="bicycle" onclick="setTravelMode('bicycle')">
+                                    <i class="fas fa-bicycle me-1"></i>Велосипед
+                                </button>
                             </div>
+                            <input type="hidden" name="travel_mode" id="id_travel_mode" 
+                                value="{{ form.travel_mode.value|default:'public' }}">
+                        </div>
+                            
+                            <!-- Фильтры транспорта -->
                             <div id="transport-filters" class="filters-panel" 
                                  style="display: {% if form.travel_mode.value == 'public' or not form.travel_mode.value %}block{% else %}none{% endif %};">
                                 <h5 class="mb-3"><i class="fas fa-filter me-2"></i>Фильтры транспорта</h5>
+                                
                                 <div class="filter-group">
                                     <label><i class="fas fa-bus me-1"></i>Типы транспорта</label>
                                     <div class="transport-types">
@@ -713,16 +125,11 @@
                                                            {% if value in selected_transport_types %}checked{% endif %}
                                                            onchange="updateTransportFilters()">
                                                     <label for="transport_{{ value }}">
-                                                        {% if value == 'bus' %}🚌
-                                                        {% elif value == 'tram' %}🚋
-                                                        {% elif value == 'trolleybus' %}🚎
-                                                        {% elif value == 'subway' %}🚇
-                                                        {% elif value == 'train' %}🚆
-                                                        {% elif value == 'shuttle_bus' %}🚐
-                                                        {% elif value == 'mcd' %}🚄
-                                                        {% elif value == 'mck' %}🚆
-                                                        {% endif %}
-                                                        {{ label }}
+                                                        {% if value == 'bus' %}Автобус
+                                                        {% elif value == 'tram' %}Трамвай
+                                                        {% elif value == 'trolleybus' %}Троллейбус
+                                                        {% elif value == 'subway' %}Метро
+                                                        {% else %}{{ label }}{% endif %}
                                                     </label>
                                                 </div>
                                             {% endif %}
@@ -740,24 +147,26 @@
                                         </div>
                                     </div>
                                 </div>
+                                
                                 <div class="filter-group">
-                                    <label><i class="fas fa-exchange-alt me-1"></i>Пересадки</label>
-                                    <div class="btn-group w-100" role="group">
-                                        {% for value, label in form.max_transfers.field.choices %}
-                                            <input type="radio" 
-                                                   class="btn-check" 
-                                                   name="max_transfers" 
-                                                   id="transfer_{{ value }}" 
-                                                   value="{{ value }}"
-                                                   {% if value == selected_max_transfers %}checked{% endif %}
-                                                   autocomplete="off"
-                                                   onchange="this.form.submit()">
-                                            <label class="btn btn-outline-primary" for="transfer_{{ value }}">
-                                                {{ label }}
-                                            </label>
-                                        {% endfor %}
-                                    </div>
+                                <label><i class="fas fa-exchange-alt me-1"></i>Пересадки</label>
+                                <div class="transfers-buttons">
+                                    {% for value, label in form.max_transfers.field.choices %}
+                                        <input type="radio" 
+                                            class="btn-check" 
+                                            name="max_transfers" 
+                                            id="transfer_{{ value }}" 
+                                            value="{{ value }}"
+                                            {% if value == selected_max_transfers %}checked{% endif %}
+                                            autocomplete="off"
+                                            onchange="this.form.submit()">
+                                        <label class="transfer-btn" for="transfer_{{ value }}">
+                                            {% if value == 0 %}0{% elif value == 2 %}1-2{% elif value == 5 %}3+{% else %}{{ label }}{% endif %}
+                                        </label>
+                                    {% endfor %}
                                 </div>
+                            </div>
+                                
                                 <div class="advanced-options">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" 
@@ -769,13 +178,14 @@
                                         <label class="form-check-label fw-semibold" for="id_only_direct">
                                             <i class="fas fa-road me-1"></i>Только прямые маршруты
                                         </label>
-                                        <small class="text-muted d-block">Без пересадок между транспортом</small>
                                     </div>
                                 </div>
                             </div>
+                            
                             <button type="submit" class="btn btn-primary-custom w-100 mt-3">
                                 <i class="fas fa-route me-2"></i>Найти маршрут
                             </button>
+                            
                             {% if request.GET %}
                                 <div class="text-center mt-2">
                                     <a href="{% url 'home' %}" class="text-muted small">
@@ -784,19 +194,19 @@
                                 </div>
                             {% endif %}
                         </form>
+                        
+                        <!-- Информация о найденных точках (БЕЗ ИСТОЧНИКА) -->
                         {% if geocoded_points %}
                             <div class="success-box mt-3">
-                                <h6><i class="fas fa-check-circle me-1"></i>Точки найдены</h6>
+                                <h6><i class="fas fa-check-circle me-1"></i>Точки маршрута</h6>
                                 <div class="mt-2">
                                     <p class="mb-1"><strong>Откуда:</strong> {{ geocoded_points.start.address }}</p>
                                     <p class="mb-1"><strong>Куда:</strong> {{ geocoded_points.end.address }}</p>
-                                    <small class="text-muted">
-                                        <i class="fas fa-database me-1"></i>
-                                        Источник: {{ geocoded_points.start.source }}
-                                    </small>
                                 </div>
                             </div>
                         {% endif %}
+                        
+                        <!-- Статистика -->
                         {% if routes %}
                             <div class="row mt-3">
                                 <div class="col-6">
@@ -813,6 +223,8 @@
                                 </div>
                             </div>
                         {% endif %}
+                        
+                        <!-- Примененные фильтры -->
                         {% if applied_filters %}
                             <div class="applied-filters mt-3">
                                 <h6><i class="fas fa-filter me-1"></i>Примененные фильтры</h6>
@@ -839,16 +251,10 @@
                                 </div>
                             </div>
                         {% endif %}
-                        {% if not use_public_transport and is_public_transport %}
-                            <div class="info-box mt-3">
-                                <h6><i class="fas fa-info-circle me-1"></i>Информация</h6>
-                                <p class="mb-0">
-                                    API общественного транспорта временно недоступно. Используется резервный режим.
-                                </p>
-                            </div>
-                        {% endif %}
                     </div>
                 </div>
+                
+                <!-- Легенда карты -->
                 <div class="card-custom mt-3">
                     <div class="card-body">
                         <h6 class="fw-semibold mb-3">
@@ -875,7 +281,10 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Правая колонка - карта и результаты -->
             <div class="col-lg-8">
+                <!-- Карта -->
                 <div class="card-custom mb-4">
                     <div class="card-header-custom">
                         <i class="fas fa-map-marked-alt me-2"></i>Карта маршрута
@@ -898,6 +307,8 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Сообщения об ошибках -->
                 {% if error_message %}
                     <div class="error-box">
                         <h6><i class="fas fa-exclamation-triangle me-1"></i>Ошибка</h6>
@@ -905,6 +316,7 @@
                     </div>
                 {% endif %}
                 
+                <!-- Найденные маршруты -->
                 {% if routes %}
                     <div class="card-custom">
                         <div class="card-header-custom">
@@ -916,7 +328,7 @@
                                 {% for route in routes %}
                                     <div class="accordion-item mb-2 border-0">
                                         <h2 class="accordion-header" id="heading{{ forloop.counter }}">
-                                            <button class="accordion-button {% if forloop.first %}collapsed{% endif %}" 
+                                            <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" 
                                                     type="button" 
                                                     data-bs-toggle="collapse" 
                                                     data-bs-target="#collapse{{ forloop.counter }}" 
@@ -926,19 +338,9 @@
                                                 <div class="d-flex justify-content-between align-items-center w-100">
                                                     <div>
                                                         <span class="route-number">{{ forloop.counter }}</span>
-                                                        <span class="transport-icon">{{ route.icon }}</span>
+                                                        <!-- УБРАЛИ mode-indicator и source -->
                                                         <strong>Маршрут {{ forloop.counter }}</strong>
-                                                        <span class="mode-indicator">{{ route.mode_display }}</span>
-                                                        {% if route.source %}
-                                                            <span class="badge bg-secondary route-badge">{{ route.source }}</span>
-                                                        {% endif %}
-                                                        {% if route.transport_types_display %}
-                                                            <div class="mt-1">
-                                                                {% for type in route.transport_types %}
-                                                                    <span class="transport-badge">{{ type }}</span>
-                                                                {% endfor %}
-                                                            </div>
-                                                        {% endif %}
+                                                        <!-- УБРАЛИ transport_types_display -->
                                                     </div>
                                                     <div>
                                                         <span class="badge bg-primary">
@@ -949,7 +351,7 @@
                                                         </span>
                                                         {% if route.traffic_delay and route.traffic_delay > 0 %}
                                                             <span class="badge bg-warning ms-1">
-                                                                <i class="fas fa-traffic-light me-1"></i>+{{ route.traffic_delay }} мин пробки
+                                                                <i class="fas fa-traffic-light me-1"></i>+{{ route.traffic_delay }} мин
                                                             </span>
                                                         {% endif %}
                                                     </div>
@@ -977,15 +379,6 @@
                                                                 <li class="mb-1">
                                                                     <strong>Пересадок:</strong> 
                                                                     <span class="badge bg-info">{{ route.transfer_count }}</span>
-                                                                    {% if route.crossing_count %}
-                                                                        <small class="text-muted">(внутри платформы: {{ route.crossing_count }})</small>
-                                                                    {% endif %}
-                                                                </li>
-                                                            {% endif %}
-                                                            {% if route.total_walkway_distance %}
-                                                                <li class="mb-1">
-                                                                    <strong>Пешком:</strong> 
-                                                                    {{ route.total_walkway_distance }}
                                                                 </li>
                                                             {% endif %}
                                                         </ul>
@@ -995,143 +388,160 @@
                                                         <ul class="list-unstyled">
                                                             <li class="mb-1">
                                                                 <strong>Начало:</strong><br>
-                                                                <span class="text-muted">{{ route.start_address|default:geocoded_points.start.address|default:"Не указано" }}</span>
+                                                                <span class="text-muted">{{ geocoded_points.start.address|default:"Не указано" }}</span>
                                                             </li>
                                                             <li class="mb-1">
                                                                 <strong>Конец:</strong><br>
-                                                                <span class="text-muted">{{ route.end_address|default:geocoded_points.end.address|default:"Не указано" }}</span>
+                                                                <span class="text-muted">{{ geocoded_points.end.address|default:"Не указано" }}</span>
                                                             </li>
                                                         </ul>
                                                     </div>
                                                 </div>
+                                                
+                                                <!-- Подробный маршрут -->
                                                 {% if route.segments %}
                                                     <h6><i class="fas fa-list-ol text-warning me-2"></i>Подробный маршрут</h6>
                                                     <div class="route-details mt-2">
                                                         {% for segment in route.segments %}
-                                                            <div class="segment-item">
-                                                                <div class="d-flex justify-content-between align-items-start">
-                                                                    <div class="d-flex align-items-center" style="min-width: 0;">
-                                                                        {% if segment.type == 'walk' %}
+                                                            {% if segment.type == 'walk' %}
+                                                                <div class="segment-item">
+                                                                    <div class="d-flex justify-content-between align-items-start">
+                                                                        <div class="d-flex align-items-center" style="min-width: 0;">
                                                                             <span class="badge bg-success me-2" style="white-space: nowrap;">
                                                                                 <i class="fas fa-walking me-1"></i>Пешком
                                                                             </span>
-                                                                        {% elif segment.type == 'transport' %}
+                                                                            <div class="ms-2" style="min-width: 0;">
+                                                                                <div class="mt-1">
+                                                                                    {% if segment.details.direction %}
+                                                                                        <strong>{{ segment.details.direction }}</strong><br>
+                                                                                    {% endif %}
+                                                                                    {% if segment.details.street %}
+                                                                                    <small class="text-muted">
+                                                                                        <i class="fas fa-road me-1"></i>
+                                                                                        {{ segment.details.street }}<br>
+                                                                                    </small>
+                                                                                    {% endif %}
+                                                                                    <small class="text-muted">
+                                                                                        <i class="fas fa-ruler me-1"></i>
+                                                                                        {{ segment.details.distance }}
+                                                                                        | <i class="fas fa-clock me-1"></i>
+                                                                                        {{ segment.time }} мин
+                                                                                    </small>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="text-end ms-3" style="white-space: nowrap;">
+                                                                            <div class="badge bg-dark mb-1">{{ segment.time }} мин</div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            {% elif segment.type == 'transport' %}
+                                                                <div class="segment-item">
+                                                                    <div class="d-flex justify-content-between align-items-start">
+                                                                        <div class="d-flex align-items-center" style="min-width: 0;">
                                                                             <span class="badge bg-primary me-2" style="white-space: nowrap;">
                                                                                 {% if route.travel_mode == 'car' %}
-                                                                                    <i class="fas fa-car me-1"></i>Авто
+                                                                                    <i class="fas fa-car"></i>
                                                                                 {% elif route.travel_mode == 'bicycle' %}
-                                                                                    <i class="fas fa-bicycle me-1"></i>Велосипед
+                                                                                    <i class="fas fa-bicycle"></i>
                                                                                 {% else %}
                                                                                     {% if segment.details.transport_type == 'bus' %}🚌
                                                                                     {% elif segment.details.transport_type == 'tram' %}🚋
                                                                                     {% elif segment.details.transport_type == 'trolleybus' %}🚎
                                                                                     {% elif segment.details.transport_type == 'subway' %}🚇
                                                                                     {% else %}🚌{% endif %}
-                                                                                    {{ segment.details.transport_name|default:"Транспорт" }}
                                                                                 {% endif %}
                                                                             </span>
-                                                                        {% endif %}
-                                                                        
-                                                                        <div class="ms-2" style="min-width: 0;">
-                                                                            {% if segment.details.route_display %}
-                                                                                <strong class="d-block">
-                                                                                    {% if segment.type == 'transport' %}
-                                                                                        Маршрут: {{ segment.details.route_display }}
-                                                                                    {% endif %}
-                                                                                </strong>
-                                                                            {% endif %}
-                                                                            
-                                                                            {% if segment.details.from_stop and segment.details.to_stop %}
-                                                                                <div class="d-flex align-items-center mt-1">
-                                                                                    <span class="text-primary">
-                                                                                        <i class="fas fa-map-marker-alt me-1"></i>{{ segment.details.from_stop }}
-                                                                                    </span>
-                                                                                    <i class="fas fa-arrow-right mx-2 text-muted"></i>
-                                                                                    <span class="text-success">
-                                                                                        <i class="fas fa-flag-checkered me-1"></i>{{ segment.details.to_stop }}
-                                                                                    </span>
-                                                                                </div>
-                                                                            {% endif %}
-                                                                            
-                                                                            {% if segment.details.direction %}
-                                                                                <div class="mt-1">
-                                                                                    <small class="text-muted">
-                                                                                        <i class="fas fa-info-circle me-1"></i>
-                                                                                        {{ segment.details.direction }}
-                                                                                    </small>
-                                                                                </div>
-                                                                            {% endif %}
-                                                                            
-                                                                            {% if segment.details.stops_count and segment.details.stops_count > 0 %}
-                                                                                <div class="mt-1">
-                                                                                    <small class="badge bg-info">
-                                                                                        <i class="fas fa-bus me-1"></i>
-                                                                                        {{ segment.details.stops_count }} остановок
-                                                                                    </small>
+                                                                            <div class="ms-2" style="min-width: 0;">
+                                                                                {% if segment.details.route_display %}
+                                                                                    <strong class="d-block">Маршрут: {{ segment.details.route_display }}</strong>
+                                                                                {% endif %}
+                                                                                {% if segment.details.from_stop and segment.details.to_stop %}
+                                                                                    <div class="d-flex align-items-center mt-1">
+                                                                                        <span class="text-primary">
+                                                                                            <i class="fas fa-map-marker-alt me-1"></i>{{ segment.details.from_stop }}
+                                                                                        </span>
+                                                                                        <i class="fas fa-arrow-right mx-2 text-muted"></i>
+                                                                                        <span class="text-success">
+                                                                                            <i class="fas fa-flag-checkered me-1"></i>{{ segment.details.to_stop }}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                {% endif %}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="text-end ms-3" style="white-space: nowrap;">
+                                                                            <div class="badge bg-dark mb-1">{{ segment.time|default:"0" }} мин</div>
+                                                                            {% if segment.waiting_time %}
+                                                                                <div class="badge bg-secondary">
+                                                                                    Ожидание: {{ segment.waiting_time }} мин
                                                                                 </div>
                                                                             {% endif %}
                                                                         </div>
                                                                     </div>
-                                                                    
-                                                                    <div class="text-end ms-3" style="white-space: nowrap;">
-                                                                        <div class="badge bg-dark mb-1">{{ segment.time }} мин</div>
-                                                                        {% if segment.waiting_time %}
-                                                                            <div class="badge bg-secondary">
-                                                                                Ожидание: {{ segment.waiting_time }} мин
+                                                                </div>
+                                                                {% elif segment.type == 'instruction' %}
+<div class="segment-item" style="border-left-color: #6f42c1;">
+    <div class="d-flex justify-content-between align-items-start">
+        <div class="d-flex align-items-center" style="min-width: 0;">
+            <span class="badge bg-info me-2" style="white-space: nowrap;">
+                <i class="fas fa-map-signs me-1"></i>Маневр
+            </span>
+            <div class="ms-2" style="min-width: 0;">
+                <div class="mt-1">
+                    <!-- Основной текст инструкции из API -->
+                    <strong>{{ segment.details.text }}</strong>
+                    {% if segment.details.street %}
+                    <br>
+                    <small class="text-muted">
+                        <i class="fas fa-road me-1"></i>
+                        {{ segment.details.street }}
+                    </small>
+                    {% endif %}
+                    <!-- Можно добавить расстояние до маневра -->
+                    {% if segment.details.distance %}
+                    <br>
+                    <small class="text-muted">
+                        <i class="fas fa-ruler me-1"></i>
+                        Через {{ segment.details.distance }} м
+                    </small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <!-- Блок с временем, если оно рассчитано для шага -->
+        <div class="text-end ms-3" style="white-space: nowrap;">
+            {% if segment.time and segment.time > 0 %}
+                <div class="badge bg-dark mb-1">{{ segment.time }} мин</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+                                                            {% else %}
+                                                                <div class="segment-item">
+                                                                    <div class="d-flex justify-content-between align-items-start">
+                                                                        <div class="d-flex align-items-center" style="min-width: 0;">
+                                                                            <span class="badge bg-secondary me-2" style="white-space: nowrap;">
+                                                                                <i class="fas fa-route me-1"></i>Движение
+                                                                            </span>
+                                                                            <div class="ms-2" style="min-width: 0;">
+                                                                                <strong>Продолжайте движение</strong>
+                                                                                {% if segment.details.direction %}
+                                                                                    <div class="mt-1">
+                                                                                        <small class="text-muted">
+                                                                                            <i class="fas fa-info-circle me-1"></i>
+                                                                                            {{ segment.details.direction }}
+                                                                                        </small>
+                                                                                    </div>
+                                                                                {% endif %}
                                                                             </div>
-                                                                        {% endif %}
+                                                                        </div>
+                                                                        <div class="text-end ms-3" style="white-space: nowrap;">
+                                                                            <div class="badge bg-dark mb-1">{{ segment.time|default:"0" }} мин</div>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
+                                                            {% endif %}
                                                         {% endfor %}
-                                                    </div>
-                                                {% endif %}
-                                                {% if route.instructions %}
-                                                    <h6 class="mt-4"><i class="fas fa-directions text-info me-2"></i>Пошаговый маршрут</h6>
-                                                    <div class="list-group mt-2">
-                                                        {% for step in route.instructions %}
-                                                            <div class="list-group-item border-0 border-bottom py-2">
-                                                                <div class="d-flex w-100 justify-content-between">
-                                                                    <h6 class="mb-1">Шаг {{ forloop.counter }}</h6>
-                                                                    <div>
-                                                                        <span class="badge bg-primary">{{ step.time }} мин</span>
-                                                                        {% if step.distance %}
-                                                                            <span class="badge bg-secondary ms-1">{{ step.distance }} м</span>
-                                                                        {% endif %}
-                                                                    </div>
-                                                                </div>
-                                                                <p class="mb-1">
-                                                                    {% if step.direction %}
-                                                                        <strong>{{ step.direction }}</strong><br>
-                                                                    {% endif %}
-                                                                    {% if step.street %}
-                                                                        <small class="text-muted">
-                                                                            <i class="fas fa-road me-1"></i>Улица: {{ step.street }}
-                                                                        </small>
-                                                                    {% endif %}
-                                                                </p>
-                                                            </div>
-                                                        {% endfor %}
-                                                    </div>
-                                                {% endif %}
-                                                {% if route.filters_applied %}
-                                                    <div class="applied-filters mt-4">
-                                                        <h6><i class="fas fa-filter me-1"></i>Примененные фильтры для этого маршрута</h6>
-                                                        <div class="mt-2">
-                                                            {% if route.filters_applied.transport_types %}
-                                                                <span class="badge bg-info me-1 mb-1">
-                                                                    Типы: {{ route.filters_applied.transport_types|join:", " }}
-                                                                </span>
-                                                            {% endif %}
-                                                            {% if route.filters_applied.max_transfers %}
-                                                                <span class="badge bg-info me-1 mb-1">
-                                                                    Макс. пересадок: {{ route.filters_applied.max_transfers }}
-                                                                </span>
-                                                            {% endif %}
-                                                            {% if route.filters_applied.only_direct %}
-                                                                <span class="badge bg-info me-1 mb-1">Только прямые</span>
-                                                            {% endif %}
-                                                        </div>
                                                     </div>
                                                 {% endif %}
                                             </div>
@@ -1161,651 +571,35 @@
                 {% endif %}
             </div>
         </div>
+        
+        <!-- Футер -->
         <footer class="mt-5 pt-4 border-top">
             <div class="row">
                 <div class="col-md-6">
                     <h6>ЕкбТранспорт+</h6>
                     <p class="text-muted small">
-                        Интеллектуальный планировщик поездок по Екатеринбургу.<br>
-                        Использует данные 2GIS, TomTom и другие источники.
+                        Планировщик поездок по Екатеринбургу
                     </p>
                 </div>
                 <div class="col-md-6 text-md-end">
                     <p class="text-muted small">
-                        <i class="fas fa-code me-1"></i>Учебный проект по Django<br>
-                        <i class="fas fa-database me-1"></i>Данные обновлены в реальном времени
+                        <i class="fas fa-code me-1"></i>Учебный проект<br>
+                        <i class="fas fa-map me-1"></i>Данные обновляются в реальном времени
                     </p>
-                    <div class="mt-2">
-                        <a href="/admin/analytics/" class="btn btn-outline-primary btn-sm me-2">
-                            <i class="fas fa-chart-line me-1"></i>Аналитика
-                        </a>
-                        <a href="/admin/clear-cache/" class="btn btn-outline-secondary btn-sm">
-                            <i class="fas fa-trash-alt me-1"></i>Очистить кэш
-                        </a>
-                    </div>
                 </div>
             </div>
         </footer>
     </div>
     
-    <!-- Подключаем Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        // Глобальные переменные для карты и данных
-        let map = null;
-        let routeLayers = [];
-        let markers = [];
-        let currentRouteIndex = -1;
-        const routesData = JSON.parse('{{ routes_json|escapejs }}' || '[]');
-        const geocodedPoints = JSON.parse('{{ geocoded_points_json|escapejs }}' || '{}');
-        
-        // Основная функция инициализации
-        function initMap() {
-            // Дожидаемся загрузки API 2GIS
-            DG.then(function() {
-                // ВАЖНО: Укажите ваш демо-ключ 2GIS здесь!
-                DG.key = '5ef601a4-d465-4d49-8a46-e8f62b1c159a';
-                
-                const ekbCenter = [56.838011, 60.597465];
-                
-                // Создаем карту 2GIS
-                map = DG.map('map', {
-                    center: ekbCenter,
-                    zoom: 13,
-                    zoomControl: true,
-                    geoclicker: true
-                });
-                
-                // Добавляем масштаб
-                DG.control.scale({imperial: false}).addTo(map);
-                
-                // Если есть точки, но нет маршрутов - показываем точки
-                if (geocodedPoints.start && geocodedPoints.end && routesData.length === 0) {
-                    showPointsOnMap();
-                }
-                
-                // Если есть маршруты - показываем первый
-                if (routesData.length > 0) {
-                    setTimeout(() => {
-                        showRouteOnMap(0);
-                        // Открываем первый аккордеон
-                        const firstAccordion = document.getElementById('heading1');
-                        if (firstAccordion) {
-                            const button = firstAccordion.querySelector('.accordion-button');
-                            if (button && button.classList.contains('collapsed')) {
-                                button.click();
-                            }
-                        }
-                    }, 500);
-                }
-            });
-        }
-        
-        // Показать только точки начала и конца
-        function showPointsOnMap() {
-            clearMap();
-            
-            if (geocodedPoints.start) {
-                const startMarker = DG.marker(
-                    [geocodedPoints.start.lat, geocodedPoints.start.lon],
-                    {
-                        icon: DG.divIcon({
-                            className: 'route-marker-start',
-                            html: '<div style="background-color:#28a745; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center;"><i class="fas fa-play" style="color:white; font-size:12px;"></i></div>',
-                            iconSize: [30, 30],
-                            iconAnchor: [15, 15]
-                        })
-                    }
-                ).addTo(map);
-                
-                startMarker.bindPopup(`
-                    <div class="route-info-window">
-                        <strong>📍 Начало маршрута</strong><br>
-                        ${geocodedPoints.start.address || 'Не указано'}<br>
-                        <small class="text-muted">
-                            Координаты: ${geocodedPoints.start.lat?.toFixed(6) || 'N/A'}, 
-                            ${geocodedPoints.start.lon?.toFixed(6) || 'N/A'}
-                        </small>
-                    </div>
-                `);
-                markers.push(startMarker);
-            }
-            
-            if (geocodedPoints.end) {
-                const endMarker = DG.marker(
-                    [geocodedPoints.end.lat, geocodedPoints.end.lon],
-                    {
-                        icon: DG.divIcon({
-                            className: 'route-marker-end',
-                            html: '<div style="background-color:#dc3545; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center;"><i class="fas fa-flag" style="color:white; font-size:12px;"></i></div>',
-                            iconSize: [30, 30],
-                            iconAnchor: [15, 15]
-                        })
-                    }
-                ).addTo(map);
-                
-                endMarker.bindPopup(`
-                    <div class="route-info-window">
-                        <strong>🏁 Конец маршрута</strong><br>
-                        ${geocodedPoints.end.address || 'Не указано'}<br>
-                        <small class="text-muted">
-                            Координаты: ${geocodedPoints.end.lat?.toFixed(6) || 'N/A'}, 
-                            ${geocodedPoints.end.lon?.toFixed(6) || 'N/A'}
-                        </small>
-                    </div>
-                `);
-                markers.push(endMarker);
-            }
-            
-            if (geocodedPoints.start && geocodedPoints.end) {
-                const bounds = DG.latLngBounds([
-                    [geocodedPoints.start.lat, geocodedPoints.start.lon],
-                    [geocodedPoints.end.lat, geocodedPoints.end.lon]
-                ]);
-                map.fitBounds(bounds, { padding: [50, 50] });
-            }
-        }
-        
-        // Показать маршрут на карте
-        function showRouteOnMap(routeIndex) {
-            if (routeIndex === currentRouteIndex) {
-                return;
-            }
-            
-            currentRouteIndex = routeIndex;
-            clearMap();
-            
-            if (routesData.length > 0 && routeIndex < routesData.length) {
-                const route = routesData[routeIndex];
-                
-                // Отображаем начальную и конечную точки
-                if (geocodedPoints.start && geocodedPoints.end) {
-                    const startMarker = DG.marker(
-                        [geocodedPoints.start.lat, geocodedPoints.start.lon],
-                        {
-                            icon: DG.divIcon({
-                                className: 'route-marker-start',
-                                html: '<div style="background-color:#28a745; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center;"><i class="fas fa-play" style="color:white; font-size:12px;"></i></div>',
-                                iconSize: [30, 30],
-                                iconAnchor: [15, 15]
-                            })
-                        }
-                    ).addTo(map);
-                    
-                    startMarker.bindPopup(`
-                        <div class="route-info-window">
-                            <strong>📍 Начало маршрута</strong><br>
-                            ${geocodedPoints.start.address || 'Не указано'}<br>
-                            <small class="text-muted">Маршрут ${routeIndex + 1}</small>
-                        </div>
-                    `);
-                    markers.push(startMarker);
-                    
-                    const endMarker = DG.marker(
-                        [geocodedPoints.end.lat, geocodedPoints.end.lon],
-                        {
-                            icon: DG.divIcon({
-                                className: 'route-marker-end',
-                                html: '<div style="background-color:#dc3545; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center;"><i class="fas fa-flag" style="color:white; font-size:12px;"></i></div>',
-                                iconSize: [30, 30],
-                                iconAnchor: [15, 15]
-                            })
-                        }
-                    ).addTo(map);
-                    
-                    endMarker.bindPopup(`
-                        <div class="route-info-window">
-                            <strong>🏁 Конец маршрута</strong><br>
-                            ${geocodedPoints.end.address || 'Не указано'}<br>
-                            <small class="text-muted">Маршрут ${routeIndex + 1}</small>
-                        </div>
-                    `);
-                    markers.push(endMarker);
-                }
-                
-                // Отображаем сегменты маршрута
-                const routeCoordinates = route.coordinates || [];
-                
-                if (routeCoordinates.length > 0 && routeCoordinates[0].length > 0) {
-                    // Определяем цвет линии в зависимости от типа маршрута
-                    let lineColor = '#007bff';
-                    let dashArray = null;
-                    
-                    if (route.travel_mode === 'car') {
-                        lineColor = '#ff3333';
-                    } else if (route.travel_mode === 'bicycle') {
-                        lineColor = '#17a2b8';
-                    } else if (route.travel_mode === 'pedestrian') {
-                        lineColor = '#28a745';
-                        dashArray = '10, 10';
-                    }
-                    
-                    // Создаем полилинию для всего маршрута
-                    const polyline = DG.polyline(routeCoordinates[0], {
-                        color: lineColor,
-                        weight: 5,
-                        opacity: 0.8,
-                        lineJoin: 'round',
-                        lineCap: 'round',
-                        dashArray: dashArray
-                    }).addTo(map);
-                    
-                    // Добавляем всплывающую подсказку
-                    polyline.bindPopup(`
-                        <div class="route-info-window">
-                            <strong>${route.mode_display || 'Маршрут'}</strong><br>
-                            <small>Время: ${route.total_time} мин</small><br>
-                            <small>Расстояние: ${route.total_distance ? Math.round(route.total_distance) + ' м' : 'N/A'}</small>
-                        </div>
-                    `);
-                    
-                    routeLayers.push(polyline);
-                    
-                    // Добавляем маркеры для остановок
-                    if (route.segments) {
-                        let addedStops = new Set();
-                        
-                        route.segments.forEach((segment, segmentIndex) => {
-                            if (segment.type === 'transport' && segment.details.from_stop) {
-                                let stopCoords = null;
-                                
-                                if (segment.details.from_stop_coords) {
-                                    stopCoords = segment.details.from_stop_coords;
-                                } else if (routeCoordinates[0] && routeCoordinates[0].length > 0) {
-                                    const totalSegments = route.segments.filter(s => s.type === 'transport').length;
-                                    const segmentRatio = segmentIndex / Math.max(totalSegments, 1);
-                                    const stopIndex = Math.floor(routeCoordinates[0].length * segmentRatio);
-                                    stopCoords = routeCoordinates[0][Math.min(stopIndex, routeCoordinates[0].length - 1)];
-                                }
-                                
-                                if (stopCoords && geocodedPoints.start) {
-                                    const startLat = geocodedPoints.start.lat;
-                                    const startLon = geocodedPoints.start.lon;
-                                    const stopLat = stopCoords[0];
-                                    const stopLon = stopCoords[1];
-                                    
-                                    const latDiff = Math.abs(startLat - stopLat);
-                                    const lonDiff = Math.abs(startLon - stopLon);
-                                    const distance = Math.sqrt(latDiff * latDiff + lonDiff * lonDiff);
-                                    
-                                    if (distance < 0.001 && segmentIndex === 0) {
-                                        stopCoords = [
-                                            stopLat + 0.001,
-                                            stopLon + 0.001
-                                        ];
-                                    }
-                                }
-                                
-                                if (stopCoords) {
-                                    const stopKey = `${stopCoords[0].toFixed(6)}_${stopCoords[1].toFixed(6)}`;
-                                    
-                                    if (!addedStops.has(stopKey)) {
-                                        const stopMarker = DG.marker(stopCoords, {
-                                            icon: DG.divIcon({
-                                                className: 'stop-marker',
-                                                html: `<div style="background-color:#ffc107; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; font-weight:bold; color:#333; font-size:12px;">${segmentIndex + 1}</div>`,
-                                                iconSize: [30, 30],
-                                                iconAnchor: [15, 15]
-                                            })
-                                        }).addTo(map);
-                                        
-                                        stopMarker.bindPopup(`
-                                            <div class="stop-info-window">
-                                                <strong>🚏 ${segment.details.from_stop}</strong><br>
-                                                <small>${segment.details.transport_name || 'Транспорт'}</small><br>
-                                                <small>Маршрут: ${segment.details.route_display || 'Не указан'}</small>
-                                                ${segment.details.stops_count ? `<br><small>${segment.details.stops_count} остановок</small>` : ''}
-                                            </div>
-                                        `);
-                                        markers.push(stopMarker);
-                                        addedStops.add(stopKey);
-                                    }
-                                }
-                            }
-                            
-                            if (segmentIndex === route.segments.length - 1 && segment.type === 'transport' && segment.details.to_stop) {
-                                let stopCoords = null;
-                                
-                                if (segment.details.to_stop_coords) {
-                                    stopCoords = segment.details.to_stop_coords;
-                                } else if (geocodedPoints.end) {
-                                    stopCoords = [geocodedPoints.end.lat, geocodedPoints.end.lon];
-                                }
-                                
-                                if (stopCoords) {
-                                    const stopKey = `${stopCoords[0].toFixed(6)}_${stopCoords[1].toFixed(6)}`;
-                                    
-                                    if (!addedStops.has(stopKey)) {
-                                        const stopMarker = DG.marker(stopCoords, {
-                                            icon: DG.divIcon({
-                                                className: 'stop-marker-end',
-                                                html: '<div style="background-color:#28a745; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; font-weight:bold; color:white; font-size:12px;">🏁</div>',
-                                                iconSize: [30, 30],
-                                                iconAnchor: [15, 15]
-                                            })
-                                        }).addTo(map);
-                                        
-                                        stopMarker.bindPopup(`
-                                            <div class="stop-info-window">
-                                                <strong>🏁 ${segment.details.to_stop}</strong><br>
-                                                <small>Конечная остановка</small>
-                                            </div>
-                                        `);
-                                        markers.push(stopMarker);
-                                        addedStops.add(stopKey);
-                                    }
-                                }
-                            }
-                        });
-                    }
-                    
-                    // Центрируем карту на маршруте
-                    const bounds = DG.latLngBounds(routeCoordinates[0]);
-                    map.fitBounds(bounds, { padding: [50, 50] });
-                } else {
-                    if (geocodedPoints.start && geocodedPoints.end) {
-                        const bounds = DG.latLngBounds([
-                            [geocodedPoints.start.lat, geocodedPoints.start.lon],
-                            [geocodedPoints.end.lat, geocodedPoints.end.lon]
-                        ]);
-                        map.fitBounds(bounds, { padding: [50, 50] });
-                    }
-                }
-                
-                // Подсвечиваем активный аккордеон
-                document.querySelectorAll('.accordion-button').forEach((btn, index) => {
-                    if (index === routeIndex) {
-                        btn.classList.add('active-route');
-                        btn.style.backgroundColor = '#e7f1ff';
-                    } else {
-                        btn.classList.remove('active-route');
-                        btn.style.backgroundColor = '';
-                    }
-                });
-            }
-        }
-        
-        // Очистка карты
-        function clearMap() {
-            routeLayers.forEach(layer => {
-                if (map.hasLayer(layer)) {
-                    map.removeLayer(layer);
-                }
-            });
-            markers.forEach(marker => {
-                if (map.hasLayer(marker)) {
-                    map.removeLayer(marker);
-                }
-            });
-            routeLayers = [];
-            markers = [];
-        }
-        
-        // Сброс вида карты
-        function resetMapView() {
-            if (routesData.length > 0 && currentRouteIndex >= 0) {
-                showRouteOnMap(currentRouteIndex);
-            } else if (geocodedPoints.start && geocodedPoints.end) {
-                showPointsOnMap();
-            } else {
-                map.setView([56.838011, 60.597465], 13);
-            }
-        }
-        
-        // Полноэкранный режим карты
-        function toggleFullscreen() {
-            const mapContainer = document.getElementById('map');
-            if (!document.fullscreenElement) {
-                if (mapContainer.requestFullscreen) {
-                    mapContainer.requestFullscreen();
-                } else if (mapContainer.webkitRequestFullscreen) {
-                    mapContainer.webkitRequestFullscreen();
-                } else if (mapContainer.msRequestFullscreen) {
-                    mapContainer.msRequestFullscreen();
-                }
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
-                } else if (document.msExitFullscreen) {
-                    document.msExitFullscreen();
-                }
-            }
-        }
-        
-        // Автодополнение адресов
-        function setupAutocomplete(inputId, itemsContainerId) {
-            const input = document.getElementById(inputId);
-            const itemsContainer = document.getElementById(itemsContainerId);
-            
-            if (!input || !itemsContainer) return;
-            
-            let currentFocus = -1;
-            let timeoutId = null;
-            
-            input.addEventListener('input', function(e) {
-                const query = this.value.trim();
-                itemsContainer.innerHTML = '';
-                currentFocus = -1;
-                
-                if (query.length < 2) {
-                    return;
-                }
-                
-                if (timeoutId) {
-                    clearTimeout(timeoutId);
-                }
-                
-                timeoutId = setTimeout(() => {
-                    fetchAutocompleteResults(query, itemsContainer, input);
-                }, 300);
-            });
-            
-            input.addEventListener('keydown', function(e) {
-                const items = itemsContainer.getElementsByClassName('autocomplete-item');
-                
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    currentFocus = Math.min(currentFocus + 1, items.length - 1);
-                    setActiveItem(items);
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    currentFocus = Math.max(currentFocus - 1, -1);
-                    setActiveItem(items);
-                } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (currentFocus > -1 && items[currentFocus]) {
-                        items[currentFocus].click();
-                    }
-                } else if (e.key === 'Escape') {
-                    itemsContainer.innerHTML = '';
-                }
-            });
-            
-            document.addEventListener('click', function(e) {
-                if (!itemsContainer.contains(e.target) && e.target !== input) {
-                    itemsContainer.innerHTML = '';
-                }
-            });
-        }
-        
-        // Запрос результатов автодополнения
-        function fetchAutocompleteResults(query, container, input) {
-            fetch(`/api/autocomplete/?q=${encodeURIComponent(query)}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Ошибка сети');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    container.innerHTML = '';
-                    
-                    if (data.results && data.results.length > 0) {
-                        data.results.forEach((item, index) => {
-                            const itemElement = document.createElement('div');
-                            itemElement.className = 'autocomplete-item';
-                            itemElement.innerHTML = `
-                                <div class="fw-semibold">${item.label}</div>
-                                <small class="text-muted">${item.full_address || ''}</small>
-                            `;
-                            
-                            itemElement.addEventListener('click', function() {
-                                input.value = item.label;
-                                container.innerHTML = '';
-                                
-                                input.dataset.lat = item.lat;
-                                input.dataset.lon = item.lon;
-                            });
-                            
-                            itemElement.addEventListener('mouseenter', function() {
-                                removeActiveItems(container);
-                                this.classList.add('active');
-                            });
-                            
-                            container.appendChild(itemElement);
-                        });
-                    } else {
-                        const noResults = document.createElement('div');
-                        noResults.className = 'autocomplete-item text-muted';
-                        noResults.textContent = 'Ничего не найдено';
-                        container.appendChild(noResults);
-                    }
-                })
-                .catch(error => {
-                    console.error('Ошибка автодополнения:', error);
-                    const errorElement = document.createElement('div');
-                    errorElement.className = 'autocomplete-item text-danger';
-                    errorElement.textContent = 'Ошибка загрузки данных';
-                    container.appendChild(errorElement);
-                });
-        }
-        
-        // Установка активного элемента автодополнения
-        function setActiveItem(items) {
-            removeActiveItems();
-            if (currentFocus >= 0 && items[currentFocus]) {
-                items[currentFocus].classList.add('active');
-                items[currentFocus].scrollIntoView({ block: 'nearest' });
-            }
-        }
-        
-        // Удаление активных элементов автодополнения
-        function removeActiveItems() {
-            document.querySelectorAll('.autocomplete-item.active').forEach(item => {
-                item.classList.remove('active');
-            });
-        }
-        
-        // Установка режима передвижения
-        function setTravelMode(mode) {
-            document.getElementById('id_travel_mode').value = mode;
-            
-            document.querySelectorAll('.switch-btn').forEach(btn => {
-                if (btn.dataset.mode === mode) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-            
-            const filtersPanel = document.getElementById('transport-filters');
-            if (mode === 'public') {
-                filtersPanel.style.display = 'block';
-            } else {
-                filtersPanel.style.display = 'none';
-            }
-        }
-        
-        // Обновление фильтров транспорта
-        function updateTransportFilters() {
-            const allCheckbox = document.getElementById('transport_all');
-            const specificCheckboxes = document.querySelectorAll('input[name="transport_types"]:not([value="all"])');
-            const checkedSpecific = Array.from(specificCheckboxes).filter(cb => cb.checked);
-            
-            if (checkedSpecific.length > 0) {
-                allCheckbox.checked = false;
-            }
-        }
-        
-        // Переключение всех типов транспорта
-        function toggleAllTransportTypes(checkbox) {
-            const specificCheckboxes = document.querySelectorAll('input[name="transport_types"]:not([value="all"])');
-            
-            if (checkbox.checked) {
-                specificCheckboxes.forEach(cb => {
-                    cb.checked = false;
-                });
-            }
-        }
-        
-        // Показ загрузки
-        function showLoading() {
-            document.getElementById('loadingOverlay').style.display = 'flex';
-        }
-        
-        // Скрытие загрузки
-        function hideLoading() {
-            document.getElementById('loadingOverlay').style.display = 'none';
-        }
-        
-        // Инициализация при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
-            // Инициализируем карту 2GIS
-            initMap();
-            
-            // Настраиваем автодополнение
-            setupAutocomplete('id_start_point', 'start-autocomplete');
-            setupAutocomplete('id_end_point', 'end-autocomplete');
-            
-            // Настраиваем отправку формы с индикацией загрузки
-            const form = document.getElementById('route-form');
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    const startInput = document.getElementById('id_start_point');
-                    const endInput = document.getElementById('id_end_point');
-                    
-                    if (!startInput.value.trim() || !endInput.value.trim()) {
-                        e.preventDefault();
-                        alert('Пожалуйста, заполните оба поля: "Откуда" и "Куда"');
-                        return;
-                    }
-                    
-                    showLoading();
-                    
-                    setTimeout(hideLoading, 10000);
-                });
-            }
-            
-            // Добавляем обработчик для кнопок аккордеона
-            document.querySelectorAll('.accordion-button').forEach((button, index) => {
-                button.addEventListener('click', function() {
-                    setTimeout(() => {
-                        showRouteOnMap(index);
-                    }, 100);
-                });
-            });
-            
-            // Обработка сообщений об ошибках
-            if (document.querySelector('.error-box')) {
-                setTimeout(() => {
-                    document.querySelector('.error-box').style.opacity = '0.7';
-                }, 5000);
-            }
-        });
-        
-        // Обработка выхода из полноэкранного режима
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-        document.addEventListener('msfullscreenchange', handleFullscreenChange);
-        
-        function handleFullscreenChange() {
-            if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
-                setTimeout(resetMapView, 100);
-            }
-        }
+        window.djangoData = {
+            routesData: JSON.parse('{{ routes_json|escapejs }}' || '[]'),
+            geocodedPoints: JSON.parse('{{ geocoded_points_json|escapejs }}' || '{}')
+        };
     </script>
+    
+    <script src="{% static 'js/script.js' %}"></script>
 </body>
 </html>

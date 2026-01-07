@@ -61,43 +61,17 @@ class CompositeRoutingService:
                 )
         
 
-        elif travel_mode == 'car':
-            if self.use_2gis_car:
-                try:
-                    logger.info("Используем 2GIS Routing API для автомобилей")
-                    return self.two_gis_routing_service.get_routes(
-                        start_lat, start_lon, end_lat, end_lon, **kwargs
-                    )
-                except Exception as e:
-                    logger.error(f"2GIS Routing API ошибка: {e}")
-                    logger.info("Фолбэк: TomTom для автомобилей")
-                    return self.tomtom_service.get_routes(
-                        start_lat, start_lon, end_lat, end_lon, **kwargs
-                    )
-            else:
-                logger.info("2GIS для авто отключен, используем TomTom")
-                return self.tomtom_service.get_routes(
-                    start_lat, start_lon, end_lat, end_lon, **kwargs
-                )
-        elif travel_mode in ['pedestrian', 'bicycle']:
-            if self.use_real_api:
-                try:
-                    logger.info(f"Используем TomTom для режима {travel_mode}")
-                    return self.tomtom_service.get_routes(
-                        start_lat, start_lon, end_lat, end_lon, **kwargs
-                    )
-                except Exception as e:
-                    logger.error(f"TomTom API ошибка: {e}")
-                    return self.stub_service.get_routes(
-                        start_lat, start_lon, end_lat, end_lon, **kwargs
-                    )
-            else:
-                logger.info("Режим заглушки для пешком/велосипеда")
-                return self.stub_service.get_routes(
-                    start_lat, start_lon, end_lat, end_lon, **kwargs
-                )
+        elif travel_mode in ['car', 'pedestrian', 'bicycle']:
+            # НОВАЯ ЛОГИКА: Всегда используем TomTom для этих режимов
+            logger.info(f"Используем TomTom API для режима {travel_mode}")
+            try:
+                # Передаем travel_mode в kwargs, чтобы TomTomService использовал его
+                kwargs['travel_mode'] = travel_mode
+                return self.tomtom_service.get_routes(start_lat, start_lon, end_lat, end_lon, **kwargs)
+            except Exception as e:
+                logger.error(f"TomTom API ошибка: {e}")
+                logger.info("Фолбэк на заглушку")
+                return self.stub_service.get_routes(start_lat, start_lon, end_lat, end_lon, **kwargs)
         else:
             logger.warning(f"Неизвестный режим {travel_mode}, используем заглушку")
-            return self.stub_service.get_routes(
-                start_lat, start_lon, end_lat, end_lon, **kwargs
-            )
+            return self.stub_service.get_routes(start_lat, start_lon, end_lat, end_lon, **kwargs)

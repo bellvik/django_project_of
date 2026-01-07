@@ -15,7 +15,7 @@ from django.shortcuts import render, redirect
 from django.conf import settings
 from django.http import JsonResponse
 from django.contrib.admin.views.decorators import staff_member_required
-from django.db.models import Count, Avg, Q, Case, When, FloatField
+from django.db.models import Count, Avg, Q, Case, When, FloatField, Max, Min
 from django.db.models.functions import TruncHour, TruncDay
 from django.core.cache import cache
 from django.core.serializers.json import DjangoJSONEncoder
@@ -51,6 +51,8 @@ def home(request):
         end_query = form.cleaned_data['end_point']
         travel_mode = form.cleaned_data['travel_mode']
         logger.info(f"Режим маршрутизации: {travel_mode}")
+        logger.debug(f"✅ Форма валидна! travel_mode={form.cleaned_data.get('travel_mode')}")
+        logger.debug(f"✅ transport_types={form.cleaned_data.get('transport_types')}")
         if getattr(settings, 'USE_REAL_API', False):
             geocoder = TomTomGeocodingService(api_key=settings.TOMTOM_API_KEY)
             logger.debug("Используем реальное геокодирование (TomTom)")
@@ -288,7 +290,13 @@ def home(request):
         'selected_max_transfers': form.cleaned_data.get('max_transfers', 'any') if form.is_bound else 'any',
         'selected_only_direct': form.cleaned_data.get('only_direct', False) if form.is_bound else False,
     }
-    
+    print(f"=== DEBUG В VIEW ===")
+    print(f"Количество маршрутов: {len(routes)}")
+    if routes:
+        print(f"Первый маршрут имеет координаты: {bool(routes[0].get('coordinates'))}")
+        if routes[0].get('coordinates'):
+            print(f"Количество координат: {len(routes[0]['coordinates'][0])}")
+            print(f"Первые координаты: {routes[0]['coordinates'][0][:2]}")
     return render(request, 'core/home.html', context)
 
 
@@ -566,13 +574,12 @@ def analytics_dashboard(request):
         ).values('provider').annotate(
             min_time=Min('response_time_ms'),
             max_time=Max('response_time_ms'),
-            p50=Avg('response_time_ms'),  
-            p95=Avg(Case(
-                When(response_time_ms__lte=Avg('response_time_ms') * 1.5, then='response_time_ms'),
-                default=Avg('response_time_ms') * 1.5,
-                output_field=FloatField()
-            ))
-        )
+            avg_time=Avg('response_time_ms'),
+            count=Count('id')
+        ).order_by('provider')
+
+        # Также обновите функцию create_response_times_chart:
+        
         
         if response_time_stats:
             df_response = pd.DataFrame(list(response_time_stats))
@@ -871,57 +878,62 @@ def create_daily_trends_chart(df):
 
 
 def create_response_times_chart(df):
-    """Создает график распределения времени ответа (боксплот)"""
-    try:
-        if df.empty:
-            return None
-            
-        plt.figure(figsize=(12, 8))
-        
-
-        data_to_plot = []
-        labels = []
-        
-        for _, row in df.iterrows():
-
-            mean = row['p50']
-            std = mean * 0.3  
-            synthetic_data = np.random.normal(mean, std, 100)
-            synthetic_data = np.clip(synthetic_data, row['min_time'], row['max_time'])
-            data_to_plot.append(synthetic_data)
-            labels.append(row['provider'][:20])
-        
-  
-        box = plt.boxplot(data_to_plot, labels=labels, patch_artist=True, 
-                         medianprops={'color': 'white', 'linewidth': 2},
-                         whiskerprops={'color': '#333', 'linewidth': 1.5},
-                         capprops={'color': '#333', 'linewidth': 1.5})
-        
-        
-        colors = plt.cm.Set3(np.linspace(0, 1, len(data_to_plot)))
-        for patch, color in zip(box['boxes'], colors):
-            patch.set_facecolor(color)
-            patch.set_alpha(0.7)
-        
-        
-        plt.title('Распределение времени ответа по провайдерам', 
-                 fontsize=14, fontweight='bold', pad=20)
-        plt.xlabel('Провайдер API', fontsize=12, fontweight='bold')
-        plt.ylabel('Время ответа (мс)', fontsize=12, fontweight='bold')
-        plt.grid(axis='y', alpha=0.3, linestyle='--')
-        plt.xticks(rotation=45, ha='right')
-        
-     
-        for i, (_, row) in enumerate(df.iterrows()):
-            plt.text(i + 1, row['p95'] * 1.1, f"Ø{row['p50']:.0f}мс", 
-                    ha='center', va='bottom', fontsize=9, fontweight='bold',
-                    bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
-        
-        plt.tight_layout()
-        return save_plot_to_base64()
-    except Exception as e:
-        logger.error(f"Ошибка создания графика response_times: {e}")
-        return None
+            """Создает график распределения времени ответа (боксплот)"""
+            try:
+                if df.empty or len(df) == 0:
+                    return None
+                    
+                plt.figure(figsize=(12, 8))
+                
+                # Подготовка данных для боксплота
+                data_to_plot = []
+                labels = []
+                
+                for _, row in df.iterrows():
+                    # Создаем синтетические данные на основе статистики
+                    # Для боксплота нужно несколько значений, создадим нормальное распределение
+                    mean = row['avg_time']
+                    # Стандартное отклонение - 20% от среднего
+                    std = mean * 0.2 if mean > 0 else 1
+                    # Генерируем 50 значений
+                    synthetic_data = np.random.normal(mean, std, 50)
+                    # Ограничиваем значения min и max
+                    synthetic_data = np.clip(synthetic_data, row['min_time'], row['max_time'])
+                    data_to_plot.append(synthetic_data)
+                    labels.append(f"{row['provider'][:15]}...\n(n={row['count']})" if len(row['provider']) > 15 else f"{row['provider']}\n(n={row['count']})")
+                
+                # Создаем боксплот
+                box = plt.boxplot(data_to_plot, labels=labels, patch_artist=True, 
+                                medianprops={'color': 'white', 'linewidth': 2},
+                                whiskerprops={'color': '#333', 'linewidth': 1.5},
+                                capprops={'color': '#333', 'linewidth': 1.5},
+                                flierprops={'marker': 'o', 'markersize': 5, 'markerfacecolor': 'red'})
+                
+                # Настраиваем цвета
+                colors = plt.cm.Set3(np.linspace(0, 1, len(data_to_plot)))
+                for patch, color in zip(box['boxes'], colors):
+                    patch.set_facecolor(color)
+                    patch.set_alpha(0.7)
+                
+                # Настройки графика
+                plt.title('Распределение времени ответа по провайдерам', 
+                        fontsize=14, fontweight='bold', pad=20)
+                plt.xlabel('Провайдер API', fontsize=12, fontweight='bold')
+                plt.ylabel('Время ответа (мс)', fontsize=12, fontweight='bold')
+                plt.grid(axis='y', alpha=0.3, linestyle='--')
+                plt.xticks(rotation=45, ha='right')
+                
+                # Добавляем подписи со средним значением
+                for i, (_, row) in enumerate(df.iterrows()):
+                    plt.text(i + 1, row['max_time'] * 1.05, f"Ø{row['avg_time']:.0f}мс", 
+                            ha='center', va='bottom', fontsize=9, fontweight='bold',
+                            bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
+                
+                plt.tight_layout()
+                return save_plot_to_base64()
+            except Exception as e:
+                logger.error(f"Ошибка создания графика response_times: {e}")
+                return None
 
 
 def save_plot_to_base64():

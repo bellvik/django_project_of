@@ -557,7 +557,6 @@ class TwoGisPublicTransportService(BaseRoutingService):
                         details['direction'] = (
                             f"{details['transport_name']} №{details['route_number']} "
                             f"от '{details['from_stop']}' до '{details['to_stop']}' "
-                            f"({details['stops_count']} ост.)"
                         )
                     
                     stop_index += 1

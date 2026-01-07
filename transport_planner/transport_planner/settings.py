@@ -11,11 +11,20 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+if not os.path.exists(os.path.join(BASE_DIR, 'static')):
+    os.makedirs(os.path.join(BASE_DIR, 'static'))
+    os.makedirs(os.path.join(BASE_DIR, 'static/css'))
+    os.makedirs(os.path.join(BASE_DIR, 'static/js'))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -31,9 +40,14 @@ USE_REAL_API = True  # Переключатель!
 TOMTOM_API_KEY = 'aSstnazvjDP54WvnmImuZfZ1XUqWgDcP'
 TWOGIS_PUBLIC_TRANSPORT_API_KEY = '5ef601a4-d465-4d49-8a46-e8f62b1c159a'
 USE_PUBLIC_TRANSPORT_API = True
-USE_2GIS_CAR_ROUTING = True
+USE_2GIS_CAR_ROUTING = False
 TWOGIS_PUBLIC_TRANSPORT_URL = 'https://routing.api.2gis.com/public_transport/2.0'
-
+if DEBUG:
+    STATICFILES_DIRS = [
+        os.path.join(BASE_DIR, 'static'),
+    ]
+else:
+    STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 # Application definition
 
 INSTALLED_APPS = [
