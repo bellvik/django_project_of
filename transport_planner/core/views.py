@@ -1,5 +1,3 @@
-# core/views.py
-
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
