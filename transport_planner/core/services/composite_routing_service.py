@@ -1,7 +1,7 @@
 from django.conf import settings
 import logging
 from .twogis_public_transport_service import TwoGisPublicTransportService
-from .routing_service import TomTomRoutingService, StubRoutingService,TwoGisRoutingService
+from .routing_service import TomTomRoutingService, StubRoutingService
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,6 @@ class CompositeRoutingService:
     def __init__(self):
 
         self.public_transport_service = TwoGisPublicTransportService()
-        self.two_gis_routing_service = TwoGisRoutingService()
         self.tomtom_service = TomTomRoutingService(api_key=settings.TOMTOM_API_KEY)
         self.stub_service = StubRoutingService()
         self.use_2gis_public = getattr(settings, 'USE_PUBLIC_TRANSPORT_API', True)
@@ -62,10 +61,8 @@ class CompositeRoutingService:
         
 
         elif travel_mode in ['car', 'pedestrian', 'bicycle']:
-            # НОВАЯ ЛОГИКА: Всегда используем TomTom для этих режимов
             logger.info(f"Используем TomTom API для режима {travel_mode}")
             try:
-                # Передаем travel_mode в kwargs, чтобы TomTomService использовал его
                 kwargs['travel_mode'] = travel_mode
                 return self.tomtom_service.get_routes(start_lat, start_lon, end_lat, end_lon, **kwargs)
             except Exception as e:

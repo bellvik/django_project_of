@@ -480,42 +480,42 @@
                                                                     </div>
                                                                 </div>
                                                                 {% elif segment.type == 'instruction' %}
-<div class="segment-item" style="border-left-color: #6f42c1;">
-    <div class="d-flex justify-content-between align-items-start">
-        <div class="d-flex align-items-center" style="min-width: 0;">
-            <span class="badge bg-info me-2" style="white-space: nowrap;">
-                <i class="fas fa-map-signs me-1"></i>Маневр
-            </span>
-            <div class="ms-2" style="min-width: 0;">
-                <div class="mt-1">
-                    <!-- Основной текст инструкции из API -->
-                    <strong>{{ segment.details.text }}</strong>
-                    {% if segment.details.street %}
-                    <br>
-                    <small class="text-muted">
-                        <i class="fas fa-road me-1"></i>
-                        {{ segment.details.street }}
-                    </small>
-                    {% endif %}
-                    <!-- Можно добавить расстояние до маневра -->
-                    {% if segment.details.distance %}
-                    <br>
-                    <small class="text-muted">
-                        <i class="fas fa-ruler me-1"></i>
-                        Через {{ segment.details.distance }} м
-                    </small>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        <!-- Блок с временем, если оно рассчитано для шага -->
-        <div class="text-end ms-3" style="white-space: nowrap;">
-            {% if segment.time and segment.time > 0 %}
-                <div class="badge bg-dark mb-1">{{ segment.time }} мин</div>
-            {% endif %}
-        </div>
-    </div>
-</div>
+                                                                    <div class="segment-item" style="border-left-color: #6f42c1;">
+                                                                        <div class="d-flex justify-content-between align-items-start">
+                                                                            <div class="d-flex align-items-center" style="min-width: 0;">
+                                                                                <span class="badge bg-info me-2" style="white-space: nowrap;">
+                                                                                    <i class="fas fa-map-signs me-1"></i>Маневр
+                                                                                </span>
+                                                                                <div class="ms-2" style="min-width: 0;">
+                                                                                    <div class="mt-1">
+                                                                                        <!-- Основной текст инструкции из API -->
+                                                                                        <strong>{{ segment.details.text }}</strong>
+                                                                                        {% if segment.details.street %}
+                                                                                        <br>
+                                                                                        <small class="text-muted">
+                                                                                            <i class="fas fa-road me-1"></i>
+                                                                                            {{ segment.details.street }}
+                                                                                        </small>
+                                                                                        {% endif %}
+                                                                                        <!-- Можно добавить расстояние до маневра -->
+                                                                                        {% if segment.details.distance %}
+                                                                                        <br>
+                                                                                        <small class="text-muted">
+                                                                                            <i class="fas fa-ruler me-1"></i>
+                                                                                            Через {{ segment.details.distance }} м
+                                                                                        </small>
+                                                                                        {% endif %}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <!-- Блок с временем, если оно рассчитано для шага -->
+                                                                            <div class="text-end ms-3" style="white-space: nowrap;">
+                                                                                {% if segment.time and segment.time > 0 %}
+                                                                                    <div class="badge bg-dark mb-1">{{ segment.time }} мин</div>
+                                                                                {% endif %}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
                                                             {% else %}
                                                                 <div class="segment-item">
                                                                     <div class="d-flex justify-content-between align-items-start">

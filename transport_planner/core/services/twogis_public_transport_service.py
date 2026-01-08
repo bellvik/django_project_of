@@ -11,15 +11,14 @@ logger = logging.getLogger(__name__)
 class TwoGisPublicTransportService(BaseRoutingService):
     """Сервис маршрутизации через 2GIS Public Transport API для Екатеринбурга"""
     
-    # Специфичные для Екатеринбурга типы транспорта (убраны московские МЦД/МЦК и др.)
+    
     TRANSPORT_TYPES = {
-        'bus': {'name': 'Автобус', 'icon': '🚌'},
-        'tram': {'name': 'Трамвай', 'icon': '🚋'},
-        'trolleybus': {'name': 'Троллейбус', 'icon': '🚎'},
-        'shuttle_bus': {'name': 'Маршрутка', 'icon': '🚐'},
-        'subway': {'name': 'Метро', 'icon': '🚇'},
-        # Примечание: 'train' может использоваться для пригородных электричек
-        'train': {'name': 'Электричка', 'icon': '🚆'},
+        'bus': {'name': 'Автобус'},
+        'tram': {'name': 'Трамвай'},
+        'trolleybus': {'name': 'Троллейбус'},
+        'shuttle_bus': {'name': 'Маршрутка'},
+        'subway': {'name': 'Метро'},
+        'train': {'name': 'Электричка'},
     }
     
     def __init__(self, api_key=None):
@@ -45,13 +44,9 @@ class TwoGisPublicTransportService(BaseRoutingService):
         :return: Словарь с маршрутами в стандартизированном формате
         """
         logger.info(f"2GIS API: Поиск маршрута ({start_lat:.6f}, {start_lon:.6f}) -> ({end_lat:.6f}, {end_lon:.6f})")
-        
-        # Если API ключ не настроен, используем улучшенную заглушку
         if not self.api_key:
             logger.warning("API ключ отсутствует, используем заглушку")
             return self._get_enhanced_stub_routes(start_lat, start_lon, end_lat, end_lon, transport_types)
-        
-        # Формирование запроса к 2GIS API
         payload = {
             "locale": "ru",
             "source": {
@@ -62,10 +57,9 @@ class TwoGisPublicTransportService(BaseRoutingService):
                 "name": "End", 
                 "point": {"lat": end_lat, "lon": end_lon}
             },
-            "output": "routes"  # Запрашиваем полную информацию о маршрутах
+            "output": "routes"  
         }
-        
-        # Применяем фильтры транспорта
+
         if transport_types:
             valid_types = self._validate_transport_types(transport_types)
             if valid_types:
@@ -85,54 +79,18 @@ class TwoGisPublicTransportService(BaseRoutingService):
                 timeout=15
             )
             
-            # Логируем статус ответа
             logger.debug(f"Статус ответа: {response.status_code}")
-            print(f"Status: {response.status_code}")
-            print(f"Response (first 2000 chars): {response.text[:2000]}")
             raw_response_text = response.text
             logger.debug(f"Тело ответа API (первые 2000 символов):\n{raw_response_text[:2000]}")
             if response.status_code != 200:
                 logger.error(f"2GIS API ошибка: {response.status_code} - {response.text[:200]}")
-                # Fallback на заглушку при ошибке API
                 return self._get_enhanced_stub_routes(start_lat, start_lon, end_lat, end_lon, transport_types)
-            
             api_data = response.json()
-            print(f"API Data keys: {list(api_data.keys()) if isinstance(api_data, dict) else 'List of length: ' + str(len(api_data))}")
-    
-    # Если это список маршрутов
             if isinstance(api_data, list) and api_data:
-                print(f"First route keys: {list(api_data[0].keys())}")
-                
-                # Посмотреть структуру первого движения
                 if 'movements' in api_data[0]:
-                    print(f"First movement structure: {json.dumps(api_data[0]['movements'][0], indent=2) if api_data[0]['movements'] else 'No movements'}")
                     logger.info(f"Получено {len(api_data)} маршрутов от 2GIS API")
-            print(f"\n=== АНАЛИЗ ОТВЕТА 2GIS API ===")
-            print(f"Всего маршрутов: {len(api_data)}")
-            
-            for route_idx, route in enumerate(api_data):
-                print(f"\n--- Маршрут {route_idx + 1} ---")
-                print(f"Типы транспорта в маршруте: {route.get('transport', [])}")
-                
-                for mov_idx, movement in enumerate(route.get('movements', [])):
-                    print(f"\n  Движение {mov_idx + 1}:")
-                    print(f"    Тип: {movement.get('type')}")
-                    print(f"    Routes: {movement.get('routes')}")
-                    print(f"    From stop: {movement.get('from_stop')}")
-                    print(f"    To stop: {movement.get('to_stop')}")
-                    
-                    # Проверим, есть ли хоть какая-то информация о транспорте
-                    if movement.get('routes'):
-                        print(f"    ПЕРВЫЙ МАРШРУТ: {movement['routes'][0]}")
-            
-            print(f"\n=== КОНЕЦ АНАЛИЗА ===\n")
-            
-            # Парсинг и фильтрация результатов
             result = self._parse_api_response(api_data, start_lat, start_lon, end_lat, end_lon)
-            
-            # Применяем дополнительные фильтры
             filtered_result = self._apply_filters(result, max_transfers, only_direct)
-            
             return filtered_result
             
         except requests.exceptions.Timeout:
@@ -163,9 +121,7 @@ class TwoGisPublicTransportService(BaseRoutingService):
             "source": "2gis_public_transport",
             "total_routes": len(api_data)
         }
-        
-        # Ограничиваем количество маршрутов для отображения
-        for idx, route in enumerate(api_data[:5]):  # Показываем до 5 маршрутов
+        for idx, route in enumerate(api_data[:5]): 
             try:
                 parsed_route = self._parse_single_route(route, idx, start_lat, start_lon, end_lat, end_lon)
                 if parsed_route:
@@ -181,17 +137,12 @@ class TwoGisPublicTransportService(BaseRoutingService):
                        end_lat: float, end_lon: float) -> Optional[Dict[str, Any]]:
         """Полная переработка парсинга маршрута"""
         try:
-            # Основные параметры
             total_duration = route.get('total_duration', 0)
             total_distance = route.get('total_distance', 0)
             transfer_count = route.get('transfer_count', 0)
             crossing_count = route.get('crossing_count', 0)
-            
-            # Типы транспорта в маршруте
             transport_types_in_route = route.get('transport', [])
             primary_type = transport_types_in_route[0] if transport_types_in_route else 'bus'
-            
-            # 1. Парсинг сегментов
             segments = []
             all_coordinates = []
             
@@ -205,17 +156,9 @@ class TwoGisPublicTransportService(BaseRoutingService):
                     segment_coords = self._extract_coordinates_from_movement(movement)
                     if segment_coords:
                         all_coordinates.extend(segment_coords)
-            
-            # 2. Извлечение остановок
             stops = self._extract_stops_from_route(route)
-            
-            # 3. Обогащение сегментов остановками
             segments = self._enrich_with_stops(segments, stops)
-            
-            # 4. Генерация инструкций с остановками
             instructions = self._generate_complete_instructions(segments)
-            
-            # 5. Формирование финального объекта
             route_data = {
                 "id": f"2gis_route_{idx + 1}",
                 "total_time": total_duration // 60,
@@ -231,7 +174,7 @@ class TwoGisPublicTransportService(BaseRoutingService):
                 "segments": segments,
                 "coordinates": [all_coordinates] if all_coordinates else [],
                 "instructions": instructions,
-                "stops": stops,  # Все остановки маршрута
+                "stops": stops, 
                 "icon": self.TRANSPORT_TYPES.get(primary_type, {}).get('icon', '🚌'),
                 "mode_display": "Общественный транспорт",
                 "travel_mode": "public",
@@ -240,12 +183,6 @@ class TwoGisPublicTransportService(BaseRoutingService):
                 "end_address": f"{end_lat:.6f}, {end_lon:.6f}",
                 "has_detailed_stops": len(stops) > 0
             }
-            
-            # Отладочная информация
-            print(f"\n[Отладка] Маршрут {idx+1}: {len(stops)} остановок найдено")
-            for i, stop in enumerate(stops[:5]):  # Показываем первые 5
-                print(f"  Остановка {i+1}: {stop.get('name')} ({stop.get('type')})")
-            
             return route_data
             
         except Exception as e:
@@ -255,20 +192,13 @@ class TwoGisPublicTransportService(BaseRoutingService):
     def _extract_coordinates_from_segment(self, segment: Dict) -> Optional[List[float]]:
         """Извлечение координат из сегмента с приоритетом по источникам данных"""
         details = segment.get('details', {})
-        
-        # 1. Прямые координаты из сегмента
         if details.get('from_stop_coords'):
             return details['from_stop_coords']
-        
-        # 2. Геометрия из альтернатив (для 2GIS API)
         if segment.get('geometry') and segment['geometry'].get('coordinates'):
             coords = segment['geometry']['coordinates']
             if coords and len(coords) > 0:
-                # Берем первую точку геометрии
                 if isinstance(coords[0], list) and len(coords[0]) >= 2:
-                    return [coords[0][1], coords[0][0]]  # Leaflet формат: [lat, lon]
-        
-        # 3. Координаты из waypoint
+                    return [coords[0][1], coords[0][0]]  
         if segment.get('waypoint'):
             waypoint = segment['waypoint']
             if 'location' in waypoint:
@@ -284,25 +214,18 @@ class TwoGisPublicTransportService(BaseRoutingService):
         move_type = movement.get('type')
         
         if move_type == 'walkway':
-            # ПЕШИЙ УЧАСТОК
             moving_duration = movement.get('moving_duration', 0) // 60
             distance = movement.get('distance', 0)
             waypoint = movement.get('waypoint', {})
-            
-            # Извлекаем максимум информации из waypoint
             waypoint_name = waypoint.get('name', '')
             waypoint_comment = waypoint.get('comment', '')
             subtype = waypoint.get('subtype', 'walk')
-            
-            # Формируем осмысленный текст
             if waypoint_comment:
                 text = waypoint_comment
             elif waypoint_name:
                 text = f"Пройдите {distance} м до {waypoint_name}"
             else:
                 text = f"Пройдите {distance} м пешком"
-            
-            # Определяем тип пешего участка
             if subtype == 'start':
                 from_stop = "Ваше местоположение"
                 to_stop = waypoint_name or "Точка посадки"
@@ -330,47 +253,28 @@ class TwoGisPublicTransportService(BaseRoutingService):
             }
             
         elif move_type == 'passage':
-            # УЧАСТОК НА ТРАНСПОРТЕ
             moving_duration = movement.get('moving_duration', 0) // 60
             waiting_duration = movement.get('waiting_duration', 0) // 60
             stops_count = movement.get('stops_count', 0)
-            
-            # Обработка информации о маршруте
             routes = movement.get('routes', [])
             route_info = routes[0] if routes else {}
-            
-            # Получаем номера маршрутов (может быть несколько альтернатив)
             route_numbers = []
             if route_info:
-                # Формат 1: names как список номеров ['45', '45а']
                 if 'names' in route_info and isinstance(route_info['names'], list):
                     route_numbers = [str(name) for name in route_info['names']]
-                # Формат 2: number как строка
                 elif 'number' in route_info:
                     route_numbers = [str(route_info['number'])]
-            
-            # Базовый номер маршрута
             primary_route = route_numbers[0] if route_numbers else '?'
-            
-            # Тип транспорта
             transport_type = route_info.get('subtype', 'bus')
             transport_type_name = route_info.get('subtype_name', 'автобус')
-            
-            # Цвет маршрута (для визуализации)
             route_color = route_info.get('color', '#1a73f0')
-            
-            # Формируем отображаемое название
             if len(route_numbers) > 1:
                 route_display = f"{'/'.join(route_numbers)} ({transport_type_name})"
             else:
                 route_display = f"{primary_route} ({transport_type_name})"
-            
-            # Получаем информацию об остановках (если есть)
             waypoint = movement.get('waypoint', {})
             waypoint_name = waypoint.get('name', '')
             waypoint_comment = waypoint.get('comment', '')
-            
-            # Генерируем направление
             direction = self._generate_transport_direction(
                 stops_count, 
                 primary_route,
@@ -383,37 +287,26 @@ class TwoGisPublicTransportService(BaseRoutingService):
                 "time": moving_duration,
                 "waiting_time": waiting_duration,
                 "details": {
-                    # Информация о маршруте
                     "route_numbers": route_numbers,
                     "route_number": primary_route,
                     "route_name": transport_type_name,
                     "route_display": route_display,
                     "route_color": route_color,
-                    
-                    # Информация о транспорте
                     "transport_type": transport_type,
                     "transport_name": self.TRANSPORT_TYPES.get(transport_type, {}).get('name', transport_type_name),
-                    "transport_icon": self.TRANSPORT_TYPES.get(transport_type, {}).get('icon', '🚌'),
-                    
-                    # Информация об остановках
                     "stops_count": stops_count,
                     "waypoint_name": waypoint_name,
                     "waypoint_comment": waypoint_comment,
-                    
-                    # Направление (заполнится позже, если будут waypoints)
-                    "from_stop": "",  # Заполнится в _enrich_with_stops
-                    "to_stop": "",    # Заполнится в _enrich_with_stops
-                    "from_stop_coords": None,  # Заполнится в _enrich_with_stops
-                    "to_stop_coords": None,    # Заполнится в _enrich_with_stops
-                    
-                    # Детализация
+                    "from_stop": "",  
+                    "to_stop": "",    
+                    "from_stop_coords": None,  
+                    "to_stop_coords": None,    
                     "direction": direction,
                     "full_description": f"{route_display}: {direction}"
                 }
             }
             
         elif move_type == 'crossing':
-            # ПЕРЕХОД ДЛЯ ПЕРЕСАДКИ
             moving_duration = movement.get('moving_duration', 0) // 60
             distance = movement.get('distance', 0)
             
@@ -473,8 +366,6 @@ class TwoGisPublicTransportService(BaseRoutingService):
                     'subtype': details.get('subtype', ''),
                     'is_transfer': details.get('is_transfer', False)
                 }
-                
-                # Добавляем детали для пересадок
                 if details.get('is_transfer'):
                     instruction['action'] = "Перейдите для пересадки"
                     instruction['details'] = "Пеший переход между остановками"
@@ -487,11 +378,7 @@ class TwoGisPublicTransportService(BaseRoutingService):
         """Генерация направления для пешего участка"""
         if not comment:
             return f"Пройдите {distance} м пешком"
-        
-        # Улучшаем русский текст
         direction = comment.replace("пешком", "пешком")
-        
-        # Добавляем расстояние, если его нет
         if "м" not in direction and distance > 0:
             direction = f"{direction} ({distance} м)"
         
@@ -521,7 +408,6 @@ class TwoGisPublicTransportService(BaseRoutingService):
             details = segment.get('details', {})
             
             if segment_type == 'walk':
-                # Для пеших участков
                 if details.get('subtype') == 'start':
                     details['from_stop'] = details.get('from_stop', 'Начало')
                     if stop_index < len(stops):
@@ -534,7 +420,6 @@ class TwoGisPublicTransportService(BaseRoutingService):
                     details['from_stop'] = f"Переход {stop_index+1}"
                     details['to_stop'] = f"Переход {stop_index+2}"
                 else:
-                    # Обычный пеший участок между остановками
                     if stop_index < len(stops):
                         details['from_stop'] = stops[stop_index].get('name', 'Остановка')
                         if stop_index + 1 < len(stops):
@@ -542,7 +427,6 @@ class TwoGisPublicTransportService(BaseRoutingService):
                             stop_index += 1
             
             elif segment_type == 'transport':
-                # Для транспортных участков
                 if stop_index < len(stops) - 1:
                     from_stop = stops[stop_index]
                     to_stop = stops[stop_index + 1]
@@ -551,8 +435,6 @@ class TwoGisPublicTransportService(BaseRoutingService):
                     details['to_stop'] = to_stop.get('name', 'Остановка')
                     details['from_stop_coords'] = [from_stop.get('lat'), from_stop.get('lon')]
                     details['to_stop_coords'] = [to_stop.get('lat'), to_stop.get('lon')]
-                    
-                    # Обновляем направление с конкретными остановками
                     if details['from_stop'] and details['to_stop']:
                         details['direction'] = (
                             f"{details['transport_name']} №{details['route_number']} "
@@ -568,8 +450,6 @@ class TwoGisPublicTransportService(BaseRoutingService):
     def _extract_coordinates_from_movement(self, movement: Dict) -> List[List[float]]:
         """Извлечение координат пути из сегмента движения (теперь с поддержкой WKT)"""
         coordinates = []
-        
-        # Вариант 1: Парсинг WKT из alternatives.geometry
         if 'alternatives' in movement and movement['alternatives']:
             for alternative in movement['alternatives']:
                 if 'geometry' in alternative:
@@ -578,9 +458,6 @@ class TwoGisPublicTransportService(BaseRoutingService):
                         if wkt_string:
                             coords = self._parse_wkt_linestring(wkt_string)
                             coordinates.extend(coords)
-    
-        
-        # Вариант 2: Координаты остановок (оставляем как было)
         for stop_key in ['from_stop', 'to_stop']:
             if stop_key in movement and movement[stop_key]:
                 stop = movement[stop_key]
@@ -595,8 +472,6 @@ class TwoGisPublicTransportService(BaseRoutingService):
     def _extract_stops_from_route(self, route: Dict) -> List[Dict]:
         """Извлечение остановок из всего маршрута"""
         stops = []
-        
-        # Вариант 1: Ищем в waypoints
         waypoints = route.get('waypoints', [])
         for wp in waypoints:
             if wp.get('type') in ['stop', 'station', 'platform', 'entrance']:
@@ -607,16 +482,13 @@ class TwoGisPublicTransportService(BaseRoutingService):
                     'type': wp.get('type'),
                     'lat': point.get('lat'),
                     'lon': point.get('lon'),
-                    'order': len(stops)  # Порядковый номер
+                    'order': len(stops)  
                 })
-        
-        # Вариант 2: Ищем в movements.waypoint
         if not stops:
             movements = route.get('movements', [])
             for movement in movements:
                 waypoint = movement.get('waypoint', {})
                 if waypoint and waypoint.get('subtype') not in ['start', 'finish']:
-                    # Для waypoint в walkway/passage
                     stops.append({
                         'name': waypoint.get('name', ''),
                         'type': 'waypoint',
@@ -633,16 +505,12 @@ class TwoGisPublicTransportService(BaseRoutingService):
         """
         coordinates = []
         try:
-            # Ищем содержимое внутри скобок
             match = re.search(r'LINESTRING\((.+?)\)', wkt_string)
             if match:
                 points_str = match.group(1)
-                # Разделяем точки по запятым
                 points = points_str.split(',')
                 for point in points:
-                    # Каждая точка: "lon lat" (в WKT сначала долгота, потом широта!)
                     lon, lat = point.strip().split()
-                    # Конвертируем в [lat, lon] для Leaflet
                     coordinates.append([float(lat), float(lon)])
         except Exception as e:
             logger.error(f"Ошибка парсинга WKT: {e}, строка: {wkt_string[:100]}")
@@ -653,21 +521,14 @@ class TwoGisPublicTransportService(BaseRoutingService):
                                 segments: List[Dict]) -> List[List[float]]:
         """Генерация реалистичного пути при отсутствии данных от API"""
         coordinates = []
-        
-        # Начальная точка
         coordinates.append([start_lat, start_lon])
-        
-        # Создаем промежуточные точки для имитации городского маршрута
         lat_step = (end_lat - start_lat) / 4
         lon_step = (end_lon - start_lon) / 4
         
         for i in range(1, 4):
-            # Добавляем небольшие отклонения для имитации изгибов дороги
             lat = start_lat + lat_step * i + (0.001 * (i % 2))
             lon = start_lon + lon_step * i + (0.001 * ((i + 1) % 2))
             coordinates.append([lat, lon])
-        
-        # Конечная точка
         coordinates.append([end_lat, end_lon])
         
         return coordinates
@@ -723,13 +584,10 @@ class TwoGisPublicTransportService(BaseRoutingService):
         filtered_routes = []
         
         for route in result['result']:
-            # Фильтр по количеству пересадок
             if max_transfers is not None:
                 total_transfers = route.get('total_transfers', 0)
                 if total_transfers > max_transfers:
                     continue
-            
-            # Фильтр "только прямые"
             if only_direct and route.get('transfer_count', 0) > 0:
                 continue
             
@@ -745,8 +603,6 @@ class TwoGisPublicTransportService(BaseRoutingService):
                                  transport_types: Optional[List[str]] = None) -> Dict[str, Any]:
         """Улучшенная заглушка с реалистичными данными для Екатеринбурга"""
         logger.info("Используем улучшенную заглушку для 2GIS API")
-        
-        # Генерация реалистичных координат пути
         import random
         coordinates = []
         for i in range(10):
@@ -754,8 +610,6 @@ class TwoGisPublicTransportService(BaseRoutingService):
             lat = start_lat + (end_lat - start_lat) * progress + random.uniform(-0.002, 0.002)
             lon = start_lon + (end_lon - start_lon) * progress + random.uniform(-0.002, 0.002)
             coordinates.append([lat, lon])
-        
-        # Пример маршрута с детализацией
         stub_route = {
             "id": "2gis_stub_1",
             "total_time": random.randint(25, 45),

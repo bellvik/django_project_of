@@ -25,7 +25,7 @@ import numpy as np
 from .models import SearchHistory, CachedRoute, ApiLog
 from .forms import RouteSearchForm
 from .services.geocoding_service import StubGeocodingService, TomTomGeocodingService
-from .services.routing_service import StubRoutingService, TomTomRoutingService,TwoGisRoutingService
+from .services.routing_service import StubRoutingService, TomTomRoutingService
 from .services.twogis_public_transport_service import TwoGisPublicTransportService
 from .services.cached_routing_service import CachedRoutingService
 from .services.composite_routing_service import CompositeRoutingService
@@ -577,10 +577,6 @@ def analytics_dashboard(request):
             avg_time=Avg('response_time_ms'),
             count=Count('id')
         ).order_by('provider')
-
-        # Также обновите функцию create_response_times_chart:
-        
-        
         if response_time_stats:
             df_response = pd.DataFrame(list(response_time_stats))
             if not df_response.empty:
@@ -884,38 +880,25 @@ def create_response_times_chart(df):
                     return None
                     
                 plt.figure(figsize=(12, 8))
-                
-                # Подготовка данных для боксплота
                 data_to_plot = []
                 labels = []
                 
                 for _, row in df.iterrows():
-                    # Создаем синтетические данные на основе статистики
-                    # Для боксплота нужно несколько значений, создадим нормальное распределение
                     mean = row['avg_time']
-                    # Стандартное отклонение - 20% от среднего
                     std = mean * 0.2 if mean > 0 else 1
-                    # Генерируем 50 значений
                     synthetic_data = np.random.normal(mean, std, 50)
-                    # Ограничиваем значения min и max
                     synthetic_data = np.clip(synthetic_data, row['min_time'], row['max_time'])
                     data_to_plot.append(synthetic_data)
                     labels.append(f"{row['provider'][:15]}...\n(n={row['count']})" if len(row['provider']) > 15 else f"{row['provider']}\n(n={row['count']})")
-                
-                # Создаем боксплот
                 box = plt.boxplot(data_to_plot, labels=labels, patch_artist=True, 
                                 medianprops={'color': 'white', 'linewidth': 2},
                                 whiskerprops={'color': '#333', 'linewidth': 1.5},
                                 capprops={'color': '#333', 'linewidth': 1.5},
                                 flierprops={'marker': 'o', 'markersize': 5, 'markerfacecolor': 'red'})
-                
-                # Настраиваем цвета
                 colors = plt.cm.Set3(np.linspace(0, 1, len(data_to_plot)))
                 for patch, color in zip(box['boxes'], colors):
                     patch.set_facecolor(color)
                     patch.set_alpha(0.7)
-                
-                # Настройки графика
                 plt.title('Распределение времени ответа по провайдерам', 
                         fontsize=14, fontweight='bold', pad=20)
                 plt.xlabel('Провайдер API', fontsize=12, fontweight='bold')

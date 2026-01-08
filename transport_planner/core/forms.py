@@ -1,7 +1,6 @@
 from django import forms
 
 class RouteSearchForm(forms.Form):
-    # Основные поля
     start_point = forms.CharField(
         label='Откуда',
         max_length=100,
@@ -88,12 +87,8 @@ class RouteSearchForm(forms.Form):
     def clean_transport_types(self):
         """Валидация и очистка поля transport_types"""
         data = self.cleaned_data.get('transport_types', [])
-        
-        # 1. Если пришло значение 'all' - возвращаем пустой список
         if 'all' in data:
             return []
-        
-        # 2. Фильтруем только допустимые значения
         valid_choices = [choice[0] for choice in self.TRANSPORT_CHOICES]
         return [item for item in data if item in valid_choices]
     
@@ -103,12 +98,9 @@ class RouteSearchForm(forms.Form):
         travel_mode = cleaned_data.get('travel_mode', 'public')
 
         if travel_mode != 'public':
-            # Важно: полностью сбрасываем поля, связанные с общественным транспортом
             cleaned_data['transport_types'] = []
             cleaned_data['max_transfers'] = 'any'
             cleaned_data['only_direct'] = False
-
-            # Ключевой момент: очищаем ошибки валидации для этих полей
             if 'transport_types' in self._errors:
                 del self._errors['transport_types']
             if 'max_transfers' in self._errors:

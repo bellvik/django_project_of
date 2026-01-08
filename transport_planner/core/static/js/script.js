@@ -1,43 +1,26 @@
-// script.js
-
-// Глобальные переменные для карты и данных
 let map = null;
 let routeLayers = [];
 let markers = [];
 let currentRouteIndex = -1;
 let routesData = [];
 let geocodedPoints = {};
-
-// Основная функция инициализации
 function initMap() {
-    // Дожидаемся загрузки API 2GIS
     DG.then(function() {
-        // Укажите ваш демо-ключ 2GIS здесь!
         DG.key = '5ef601a4-d465-4d49-8a46-e8f62b1c159a';
-        
         const ekbCenter = [56.838011, 60.597465];
-        
-        // Создаем карту 2GIS
         map = DG.map('map', {
             center: ekbCenter,
             zoom: 13,
             zoomControl: true,
             geoclicker: true
         });
-        
-        // Добавляем масштаб
         DG.control.scale({imperial: false}).addTo(map);
-        
-        // Если есть точки, но нет маршрутов - показываем точки
         if (geocodedPoints.start && geocodedPoints.end && routesData.length === 0) {
             showPointsOnMap();
         }
-        
-        // Если есть маршруты - показываем первый
         if (routesData.length > 0) {
             setTimeout(() => {
                 showRouteOnMap(0);
-                // Открываем первый аккордеон
                 const firstAccordion = document.getElementById('heading1');
                 if (firstAccordion) {
                     const button = firstAccordion.querySelector('.accordion-button');
@@ -49,8 +32,6 @@ function initMap() {
         }
     });
 }
-
-// Показать только точки начала и конца
 function showPointsOnMap() {
     clearMap();
     
@@ -114,8 +95,6 @@ function showPointsOnMap() {
         map.fitBounds(bounds, { padding: [50, 50] });
     }
 }
-
-// Показать маршрут на карте
 function showRouteOnMap(routeIndex) {
     if (routeIndex === currentRouteIndex) {
         return;
@@ -126,8 +105,6 @@ function showRouteOnMap(routeIndex) {
     
     if (routesData.length > 0 && routeIndex < routesData.length) {
         const route = routesData[routeIndex];
-        
-        // Отображаем начальную и конечную точки
         if (geocodedPoints.start && geocodedPoints.end) {
             const startMarker = DG.marker(
                 [geocodedPoints.start.lat, geocodedPoints.start.lon],
@@ -172,11 +149,9 @@ function showRouteOnMap(routeIndex) {
             markers.push(endMarker);
         }
         
-        // Отображаем сегменты маршрута
         const routeCoordinates = route.coordinates || [];
         
         if (routeCoordinates.length > 0 && routeCoordinates[0].length > 0) {
-            // Определяем цвет линии в зависимости от типа маршрута
             let lineColor = '#007bff';
             let dashArray = null;
             
@@ -198,8 +173,6 @@ function showRouteOnMap(routeIndex) {
                 lineCap: 'round',
                 dashArray: dashArray
             }).addTo(map);
-            
-            // Добавляем всплывающую подсказку
             polyline.bindPopup(`
                 <div class="route-info-window">
                     <strong>${route.mode_display || 'Маршрут'}</strong><br>
@@ -209,8 +182,6 @@ function showRouteOnMap(routeIndex) {
             `);
             
             routeLayers.push(polyline);
-            
-            // Добавляем маркеры для остановок
             if (route.segments) {
                 let addedStops = new Set();
                 
@@ -307,8 +278,6 @@ function showRouteOnMap(routeIndex) {
                     }
                 });
             }
-            
-            // Центрируем карту на маршруте
             const bounds = DG.latLngBounds(routeCoordinates[0]);
             map.fitBounds(bounds, { padding: [50, 50] });
         } else {
@@ -320,8 +289,6 @@ function showRouteOnMap(routeIndex) {
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
         }
-        
-        // Подсвечиваем активный аккордеон
         document.querySelectorAll('.accordion-button').forEach((btn, index) => {
             if (index === routeIndex) {
                 btn.classList.add('active-route');
@@ -333,8 +300,6 @@ function showRouteOnMap(routeIndex) {
         });
     }
 }
-
-// Очистка карты
 function clearMap() {
     routeLayers.forEach(layer => {
         if (map.hasLayer(layer)) {
@@ -350,7 +315,6 @@ function clearMap() {
     markers = [];
 }
 
-// Сброс вида карты
 function resetMapView() {
     if (routesData.length > 0 && currentRouteIndex >= 0) {
         showRouteOnMap(currentRouteIndex);
@@ -360,8 +324,6 @@ function resetMapView() {
         map.setView([56.838011, 60.597465], 13);
     }
 }
-
-// Полноэкранный режим карты
 function toggleFullscreen() {
     const mapContainer = document.getElementById('map');
     if (!document.fullscreenElement) {
@@ -490,8 +452,6 @@ function fetchAutocompleteResults(query, container, input) {
                 container.appendChild(errorElement);
             });
     }
-
-    // Установка активного элемента автодополнения
     function setActiveItem(items) {
         removeActiveItems();
         if (currentFocus >= 0 && items[currentFocus]) {
@@ -499,15 +459,11 @@ function fetchAutocompleteResults(query, container, input) {
             items[currentFocus].scrollIntoView({ block: 'nearest' });
         }
     }
-
-    // Удаление активных элементов автодополнения
     function removeActiveItems() {
         document.querySelectorAll('.autocomplete-item.active').forEach(item => {
             item.classList.remove('active');
         });
     }
-
-    // Установка режима передвижения
     function setTravelMode(mode) {
         document.getElementById('id_travel_mode').value = mode;
         
@@ -526,8 +482,6 @@ function fetchAutocompleteResults(query, container, input) {
             filtersPanel.style.display = 'none';
         }
     }
-
-    // Обновление фильтров транспорта
     function updateTransportFilters() {
         const allCheckbox = document.getElementById('transport_all');
         const specificCheckboxes = document.querySelectorAll('input[name="transport_types"]:not([value="all"])');
@@ -537,8 +491,6 @@ function fetchAutocompleteResults(query, container, input) {
             allCheckbox.checked = false;
         }
     }
-
-    // Переключение всех типов транспорта
     function toggleAllTransportTypes(checkbox) {
         const specificCheckboxes = document.querySelectorAll('input[name="transport_types"]:not([value="all"])');
         
@@ -558,29 +510,17 @@ function fetchAutocompleteResults(query, container, input) {
     function hideLoading() {
         document.getElementById('loadingOverlay').style.display = 'none';
     }
-
-    // Инициализация данных из Django
     function initializeDjangoData() {
-        // Получаем данные из Django-шаблона
         if (typeof window.djangoData !== 'undefined') {
             routesData = window.djangoData.routesData || [];
             geocodedPoints = window.djangoData.geocodedPoints || {};
         }
     }
-
-    // Инициализация при загрузке страницы
     document.addEventListener('DOMContentLoaded', function() {
-        // Инициализируем данные Django
         initializeDjangoData();
-        
-        // Инициализируем карту 2GIS
         initMap();
-        
-        // Настраиваем автодополнение
         setupAutocomplete('id_start_point', 'start-autocomplete');
         setupAutocomplete('id_end_point', 'end-autocomplete');
-        
-        // Настраиваем отправку формы с индикацией загрузки
         const form = document.getElementById('route-form');
         if (form) {
             form.addEventListener('submit', function(e) {
@@ -598,8 +538,6 @@ function fetchAutocompleteResults(query, container, input) {
                 setTimeout(hideLoading, 10000);
             });
         }
-        
-        // Добавляем обработчик для кнопок аккордеона
         document.querySelectorAll('.accordion-button').forEach((button, index) => {
             button.addEventListener('click', function() {
                 setTimeout(() => {
@@ -607,8 +545,6 @@ function fetchAutocompleteResults(query, container, input) {
                 }, 100);
             });
         });
-        
-        // Обработка сообщений об ошибках
         if (document.querySelector('.error-box')) {
             setTimeout(() => {
                 document.querySelector('.error-box').style.opacity = '0.7';
@@ -625,37 +561,25 @@ function fetchAutocompleteResults(query, container, input) {
             const selectedMode = travelModeSelect.value;
             
             if (selectedMode !== 'public') {
-                // Очищаем выбор в поле типов транспорта
                 Array.from(transportTypesSelect.options).forEach(option => {
                     option.selected = false;
                 });
-                
-                // Сбрасываем другие поля фильтрации
                 maxTransfersSelect.value = 'any';
                 onlyDirectCheckbox.checked = false;
-                
-                // Скрываем блок с фильтрами транспорта
                 const filtersBlock = document.querySelector('.transport-filters');
                 if (filtersBlock) {
                     filtersBlock.style.display = 'none';
                 }
             } else {
-                // Показываем блок с фильтрами транспорта
                 const filtersBlock = document.querySelector('.transport-filters');
                 if (filtersBlock) {
                     filtersBlock.style.display = 'block';
                 }
             }
         }
-        
-        // Обработчик изменения режима
         travelModeSelect.addEventListener('change', toggleTransportFilters);
-        
-        // Вызываем сразу при загрузке
         toggleTransportFilters();
     });
-
-    // Обработка выхода из полноэкранного режима
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('msfullscreenchange', handleFullscreenChange);

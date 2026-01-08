@@ -46,7 +46,7 @@ class CachedRoutingService:
             ).first()
             
             if cached:
-                logger.debug(f"[CachedRoutingService] ✅ Данные из кэша")
+                logger.debug(f"[CachedRoutingService] Данные из кэша")
                 ApiLog.objects.create(
                     provider=self.provider_name,
                     request_params=cache_key_data,
@@ -56,7 +56,7 @@ class CachedRoutingService:
                 )
                 return cached.route_data
             else:
-                logger.debug(f"[CachedRoutingService] ❌ Не найдено в кэше.")
+                logger.debug(f"[CachedRoutingService]  Не найдено в кэше.")
         except Exception as e:
             logger.error(f"Ошибка при чтении кэша: {e}")
         start_time = time.time()
@@ -73,9 +73,9 @@ class CachedRoutingService:
                         'expires_at': timezone.now() + timedelta(minutes=30)
                     }
                 )
-                logger.debug(f"💾 Данные сохранены/обновлены в кэш: {hash_key[:8]}...")
+                logger.debug(f" Данные сохранены/обновлены в кэш: {hash_key[:8]}...")
             except Exception as e:
-                logger.error(f"⚠️ Не удалось сохранить в кэш: {e}")
+                logger.error(f" Не удалось сохранить в кэш: {e}")
             ApiLog.objects.create(
                 provider=self.provider_name,
                 request_params=cache_key_data,
