@@ -13,20 +13,17 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import dj_database_url
+import matplotlib
+matplotlib.use('Agg')
+os.environ['MPLBACKEND'] = 'Agg'
 
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-if not os.path.exists(os.path.join(BASE_DIR, 'static')):
-    os.makedirs(os.path.join(BASE_DIR, 'static'))
-    os.makedirs(os.path.join(BASE_DIR, 'static/css'))
-    os.makedirs(os.path.join(BASE_DIR, 'static/js'))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -36,19 +33,20 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'запасной-ключ-на-всяки�
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG =  os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['belvik.pythonanywhere.com', '127.0.0.1']
+ALLOWED_HOSTS = ['*']
 USE_REAL_API = os.getenv('USE_REAL_API', 'False') == 'True'
 TOMTOM_API_KEY = os.getenv('TOMTOM_API_KEY')
 TWOGIS_PUBLIC_TRANSPORT_API_KEY = os.getenv('TWOGIS_PUBLIC_TRANSPORT_API_KEY')
 USE_PUBLIC_TRANSPORT_API = os.getenv('USE_PUBLIC_TRANSPORT_API', 'False') == 'True'
 USE_2GIS_CAR_ROUTING = os.getenv('USE_2GIS_CAR_ROUTING', 'False') == 'True'
 TWOGIS_PUBLIC_TRANSPORT_URL = 'https://routing.api.2gis.com/public_transport/2.0'
-if DEBUG:
-    STATICFILES_DIRS = [
-        os.path.join(BASE_DIR, 'static'),
-    ]
-else:
-    STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+if not DEBUG:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 
 INSTALLED_APPS = [
@@ -63,6 +61,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -95,10 +94,11 @@ WSGI_APPLICATION = 'transport_planner.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default='sqlite:///db.sqlite3',  # Для локальной разработки
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 
