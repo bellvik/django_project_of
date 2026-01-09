@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дашборд аналитики - ЕкбТранспорт+</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+</head>
+<body class="dashboard-body">
+    <!-- Шапка дашборда -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div style="position: relative; z-index: 100;">
+                    <h1 class="mb-2 fw-bold" style="color: white; margin-left: -10px;">
+                        <i class="fas fa-chart-line me-3"></i>
+                        Аналитический дашборд
+                    </h1>
+                    <div class="d-flex align-items-center gap-3" style="position: relative; z-index: 101;">
+                        <span class="time-badge">
+                            <i class="fas fa-calendar me-2"></i>
+                            Данные за период: {{ week_ago|date:"d.m.Y" }} - {{ today|date:"d.m.Y" }}
+                        </span>
+                        <span class="time-badge">
+                            <i class="fas fa-clock me-2"></i>
+                            Обновлено: <span id="current-time">{{ cache_timestamp|time:"H:i" }}</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="d-flex gap-2" 
+                     style="position: relative; z-index: 1001; margin-left: auto;">
+                    <div class="btn-container">
+                        <a id="home-btn" href="/" 
+                           class="btn btn-light btn-lg px-4 shadow">
+                            <i class="fas fa-home me-2"></i> На главную
+                        </a>
+                        <div class="btn-tooltip">Перейти на главную страницу</div>
+                    </div>
+                    <div class="btn-container">
+                        <a id="admin-btn" href="/admin/" 
+                           class="btn btn-warning btn-lg px-4 shadow">
+                            <i class="fas fa-cog me-2"></i> Админка
+                        </a>
+                        <div class="btn-tooltip">Перейти в админ-панель</div>
+                    </div>
+                    <div class="btn-container">
+                        <a href="?refresh=1" 
+                           class="btn btn-success btn-lg px-4 shadow">
+                            <i class="fas fa-sync-alt me-2"></i> Обновить
+                        </a>
+                        <div class="btn-tooltip">Обновить данные дашборда</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основной контент -->
+    <div class="container">
+        <!-- Блок с основными метриками -->
+        <div class="stats-grid">
+            <div class="metric-card">
+                <div class="metric-icon text-primary">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="metric-value">{{ total_searches }}</div>
+                <div class="metric-label">Всего поисков</div>
+                <div class="metric-trend">
+                    <span class="badge bg-success">✓ {{ successful_searches }} успешных</span>
+                    <span class="badge bg-danger">✗ {{ failed_searches }} неудачных</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon text-success">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <div class="metric-value">{{ conversion_rate }}%</div>
+                <div class="metric-label">Конверсия успеха</div>
+                <div class="metric-trend">
+                    {% if conversion_rate > 80 %}
+                    <i class="fas fa-rocket text-success"></i>
+                    <span class="text-success">Отличный показатель</span>
+                    {% elif conversion_rate > 60 %}
+                    <i class="fas fa-chart-line text-warning"></i>
+                    <span class="text-warning">Хороший показатель</span>
+                    {% else %}
+                    <i class="fas fa-exclamation-triangle text-danger"></i>
+                    <span class="text-danger">Требует внимания</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon text-info">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <div class="metric-value">
+                    {% if provider_stats.0.avg_response_time %}
+                        {{ provider_stats.0.avg_response_time|floatformat:0 }} мс
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+                <div class="metric-label">Ср. время ответа</div>
+                <div class="metric-trend">
+                    {% with avg_time=provider_stats.0.avg_response_time %}
+                    {% if avg_time and avg_time < 300 %}
+                    <i class="fas fa-bolt text-success"></i>
+                    <span class="text-success">Отличная скорость</span>
+                    {% elif avg_time and avg_time < 800 %}
+                    <i class="fas fa-tachometer-alt text-warning"></i>
+                    <span class="text-warning">Нормальная скорость</span>
+                    {% elif avg_time %}
+                    <i class="fas fa-exclamation-circle text-danger"></i>
+                    <span class="text-danger">Требует оптимизации</span>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon text-warning">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="metric-value">
+                    {% if provider_stats.0.cache_hit_rate %}
+                        {{ provider_stats.0.cache_hit_rate|floatformat:1 }}%
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+                <div class="metric-label">Попадания в кэш</div>
+                <div class="metric-trend">
+                    {% with cache_rate=provider_stats.0.cache_hit_rate %}
+                    {% if cache_rate and cache_rate > 50 %}
+                    <i class="fas fa-shield-alt text-success"></i>
+                    <span class="text-success">Эффективное кэширование</span>
+                    {% elif cache_rate %}
+                    <i class="fas fa-chart-bar text-info"></i>
+                    <span class="text-info">Есть потенциал роста</span>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Блок с графиками -->
+        <div class="row">
+            {% if graphs.top_routes %}
+            <div class="col-lg-6">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <i class="fas fa-route me-2"></i> Популярные маршруты
+                    </div>
+                    <div class="card-body">
+                        <div class="graph-preview" onclick="openGraphModal('{{ graphs.top_routes }}', 'Популярные маршруты')">
+                            <img src="data:image/png;base64,{{ graphs.top_routes }}" 
+                                 alt="ТОП маршрутов" 
+                                 class="img-fluid rounded-3 shadow-sm clickable-graph">
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-mouse-pointer me-1"></i>Нажмите на график для увеличения
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if graphs.provider_stats %}
+            <div class="col-lg-6">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <i class="fas fa-server me-2"></i> Производительность API
+                    </div>
+                    <div class="card-body">
+                        <div class="graph-preview" onclick="openGraphModal('{{ graphs.provider_stats }}', 'Производительность API')">
+                            <img src="data:image/png;base64,{{ graphs.provider_stats }}" 
+                                 alt="Статистика API" 
+                                 class="img-fluid rounded-3 shadow-sm clickable-graph">
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-mouse-pointer me-1"></i>Нажмите на график для увеличения
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if graphs.hourly_activity %}
+            <div class="col-12">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-area me-2"></i> Активность по часам
+                    </div>
+                    <div class="card-body">
+                        <div class="graph-preview" onclick="openGraphModal('{{ graphs.hourly_activity }}', 'Активность по часам')">
+                            <img src="data:image/png;base64,{{ graphs.hourly_activity }}" 
+                                 alt="Почасовая активность" 
+                                 class="img-fluid rounded-3 shadow-sm clickable-graph">
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-mouse-pointer me-1"></i>Нажмите на график для увеличения
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if graphs.travel_modes %}
+            <div class="col-lg-6">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <i class="fas fa-car me-2"></i> Типы маршрутов
+                    </div>
+                    <div class="card-body">
+                        <div class="graph-preview" onclick="openGraphModal('{{ graphs.travel_modes }}', 'Типы маршрутов')">
+                            <img src="data:image/png;base64,{{ graphs.travel_modes }}" 
+                                 alt="Типы маршрутов" 
+                                 class="img-fluid rounded-3 shadow-sm clickable-graph">
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-mouse-pointer me-1"></i>Нажмите на график для увеличения
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if graphs.daily_trends %}
+            <div class="col-lg-6">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <i class="fas fa-trend-up me-2"></i> Динамика по дням
+                    </div>
+                    <div class="card-body">
+                        <div class="graph-preview" onclick="openGraphModal('{{ graphs.daily_trends }}', 'Динамика по дням')">
+                            <img src="data:image/png;base64,{{ graphs.daily_trends }}" 
+                                 alt="Динамика запросов" 
+                                 class="img-fluid rounded-3 shadow-sm clickable-graph">
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-mouse-pointer me-1"></i>Нажмите на график для увеличения
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Детальная статистика -->
+        <div class="row">
+            <!-- Статистика по провайдерам -->
+            <div class="col-lg-8">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar me-2"></i> Детальная статистика по API
+                    </div>
+                    <div class="card-body">
+                        {% if provider_stats %}
+                        <div class="table-responsive">
+                            <table class="table dashboard-table">
+                                <thead>
+                                    <tr>
+                                        <th>Провайдер</th>
+                                        <th>Запросы</th>
+                                        <th>Ср. время</th>
+                                        <th>Успешность</th>
+                                        <th>Кэш</th>
+                                        <th>Эффективность</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stat in provider_stats %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge 
+                                                {% if 'tomtom' in stat.provider %}bg-primary
+                                                {% elif '2gis' in stat.provider %}bg-danger
+                                                {% elif 'stub' in stat.provider %}bg-secondary
+                                                {% else %}bg-info{% endif %}">
+                                                <i class="fas fa-{% if 'tomtom' in stat.provider %}map-marked-alt{% elif '2gis' in stat.provider %}map{% else %}code{% endif %} me-1"></i>
+                                                {{ stat.provider }}
+                                            </span>
+                                        </td>
+                                        <td class="fw-bold">{{ stat.request_count }}</td>
+                                        <td>
+                                            <span class="{% if stat.avg_response_time < 300 %}text-success fw-bold
+                                                       {% elif stat.avg_response_time < 800 %}text-warning
+                                                       {% else %}text-danger{% endif %}">
+                                                {{ stat.avg_response_time|floatformat:1 }} мс
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="progress" style="height: 8px;">
+                                                <div class="progress-bar bg-{% if stat.success_rate > 90 %}success{% elif stat.success_rate > 70 %}warning{% else %}danger{% endif %}" 
+                                                     style="width: {{ stat.success_rate }}%"
+                                                     title="{{ stat.success_rate|floatformat:1 }}%">
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">{{ stat.success_rate|floatformat:1 }}%</small>
+                                        </td>
+                                        <td>
+                                            <div class="progress" style="height: 8px;">
+                                                <div class="progress-bar bg-info" 
+                                                     style="width: {{ stat.cache_hit_rate }}%"
+                                                     title="{{ stat.cache_hit_rate|floatformat:1 }}%">
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">{{ stat.cache_hit_rate|floatformat:1 }}%</small>
+                                        </td>
+                                        <td>
+                                            {% if stat.avg_response_time < 300 and stat.success_rate > 90 %}
+                                            <span class="badge bg-success">Отличная</span>
+                                            {% elif stat.avg_response_time < 600 and stat.success_rate > 75 %}
+                                            <span class="badge bg-warning">Хорошая</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">Требует оптимизации</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-database fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Нет данных для отображения</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Боковая панель с пиковой активностью и ошибками -->
+            <div class="col-lg-4">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <i class="fas fa-clock me-2"></i> Пиковая активность
+                    </div>
+                    <div class="card-body">
+                        {% if peak_hours %}
+                        <div class="list-group">
+                            {% for hour in peak_hours %}
+                            <div class="list-group-item border-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-clock text-primary me-2"></i>
+                                        <strong>{{ hour.hour|time:"H:i" }}</strong>
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill px-3">
+                                        {{ hour.searches }} запр.
+                                    </span>
+                                </div>
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar" 
+                                         style="width: {% widthratio hour.searches peak_hours.0.searches 100 %}%">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center py-4">Нет данных о пиковой активности</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="dashboard-card mt-4">
+                    <div class="card-header">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Частые ошибки
+                    </div>
+                    <div class="card-body">
+                        {% if common_errors %}
+                        <div class="list-group">
+                            {% for error in common_errors %}
+                            <div class="list-group-item border-0 py-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <small class="text-muted">#{{ forloop.counter }}</small>
+                                        <div class="mt-1">
+                                            <small class="text-danger">
+                                                {{ error.error_message|truncatechars:60 }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-danger rounded-pill">
+                                        {{ error.count }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle fa-2x text-success mb-3"></i>
+                            <p class="text-success mb-0">Критических ошибок не обнаружено</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таблица популярных маршрутов -->
+        {% if top_routes %}
+        <div class="dashboard-card">
+            <div class="card-header">
+                <i class="fas fa-star me-2"></i> Детальная статистика маршрутов
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Откуда</th>
+                                <th>Куда</th>
+                                <th>Запросов</th>
+                                <th>Ср. вариантов</th>
+                                <th>Доля от всех</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for route in top_routes %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-{% if forloop.counter == 1 %}warning
+                                                         {% elif forloop.counter <= 3 %}info
+                                                         {% else %}secondary{% endif %}">
+                                        {{ forloop.counter }}
+                                    </span>
+                                </td>
+                                <td class="fw-semibold">{{ route.start_query|truncatechars:25 }}</td>
+                                <td class="fw-semibold">{{ route.end_query|truncatechars:25 }}</td>
+                                <td>
+                                    <span class="badge bg-primary rounded-pill px-3 py-2">
+                                        {{ route.count }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-info fw-bold">
+                                        {{ route.avg_routes|default:"—"|floatformat:1 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% widthratio route.count total_searches 100 as percentage %}
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="progress flex-grow-1" style="height: 8px;">
+                                            <div class="progress-bar bg-{% if percentage > 5 %}success{% elif percentage > 2 %}warning{% else %}info{% endif %}" 
+                                                 style="width: {{ percentage }}%">
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">{{ percentage|floatformat:1 }}%</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if route.count > 10 %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-fire me-1"></i> Популярный
+                                    </span>
+                                    {% elif route.count > 5 %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-chart-line me-1"></i> Стабильный
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-history me-1"></i> Периодический
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Информация о кэшировании -->
+        <div class="text-center mt-5 mb-4">
+            <div class="d-inline-flex align-items-center gap-3 bg-white p-3 rounded-3 shadow-sm">
+                <i class="fas fa-info-circle text-primary fa-lg"></i>
+                <div class="text-start">
+                    <small class="text-muted">
+                        <strong>Примечание:</strong> Данные кэшируются на 5 минут для повышения производительности.
+                        Для принудительного обновления нажмите кнопку "Обновить данные".
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для увеличения графиков -->
+    <div class="modal fade" id="graphModal" tabindex="-1" aria-labelledby="graphModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="graphModalLabel">Увеличенный график</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body text-center d-flex align-items-center justify-content-center">
+                    <img id="modalGraphImage" src="" alt="Увеличенный график" class="img-fluid">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="toggleZoom()">
+                        <i class="fas fa-search-plus me-2"></i>Увеличить
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="downloadGraph()">
+                        <i class="fas fa-download me-2"></i>Скачать
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="printGraph()">
+                        <i class="fas fa-print me-2"></i>Печать
+                    </button>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключение JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+</body>
+</html>
