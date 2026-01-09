@@ -12,7 +12,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -29,18 +31,17 @@ if not os.path.exists(os.path.join(BASE_DIR, 'static')):
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-9)q6^tz_gp11^1x_k)g6y6nzvdfpkk$r710jykkdm2ymwrvt4t'
+SECRET_KEY = os.getenv('SECRET_KEY', 'запасной-ключ-на-всякий-случай')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG =  os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
-# transport_planner/settings.py
-USE_REAL_API = True  # Переключатель!
-TOMTOM_API_KEY = 'aSstnazvjDP54WvnmImuZfZ1XUqWgDcP'
-TWOGIS_PUBLIC_TRANSPORT_API_KEY = '5ef601a4-d465-4d49-8a46-e8f62b1c159a'
-USE_PUBLIC_TRANSPORT_API = True
-USE_2GIS_CAR_ROUTING = False
+ALLOWED_HOSTS = ['belvik.pythonanywhere.com', '127.0.0.1']
+USE_REAL_API = os.getenv('USE_REAL_API', 'False') == 'True'
+TOMTOM_API_KEY = os.getenv('TOMTOM_API_KEY')
+TWOGIS_PUBLIC_TRANSPORT_API_KEY = os.getenv('TWOGIS_PUBLIC_TRANSPORT_API_KEY')
+USE_PUBLIC_TRANSPORT_API = os.getenv('USE_PUBLIC_TRANSPORT_API', 'False') == 'True'
+USE_2GIS_CAR_ROUTING = os.getenv('USE_2GIS_CAR_ROUTING', 'False') == 'True'
 TWOGIS_PUBLIC_TRANSPORT_URL = 'https://routing.api.2gis.com/public_transport/2.0'
 if DEBUG:
     STATICFILES_DIRS = [
@@ -48,7 +49,7 @@ if DEBUG:
     ]
 else:
     STATIC_ROOT = os.path.join(BASE_DIR, 'static')
-# Application definition
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
