@@ -288,13 +288,6 @@ def home(request):
         'selected_max_transfers': form.cleaned_data.get('max_transfers', 'any') if form.is_bound else 'any',
         'selected_only_direct': form.cleaned_data.get('only_direct', False) if form.is_bound else False,
     }
-    print(f"=== DEBUG В VIEW ===")
-    print(f"Количество маршрутов: {len(routes)}")
-    if routes:
-        print(f"Первый маршрут имеет координаты: {bool(routes[0].get('coordinates'))}")
-        if routes[0].get('coordinates'):
-            print(f"Количество координат: {len(routes[0]['coordinates'][0])}")
-            print(f"Первые координаты: {routes[0]['coordinates'][0][:2]}")
     return render(request, 'core/home.html', context)
 
 
