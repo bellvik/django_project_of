@@ -32,7 +32,7 @@ class ApiLog(models.Model):
         ('tomtom_route', 'TomTom (Маршруты)'),
         ('stub', 'Заглушка'),
     ]
-    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    provider = models.CharField(max_length=50, choices=PROVIDER_CHOICES)
     request_params = models.TextField(blank=True)  
     response_status = models.IntegerField()  
     response_time_ms = models.FloatField() 
