@@ -443,7 +443,7 @@ def analytics_dashboard(request):
     cache_key = f"analytics_dashboard_{date.today().strftime('%Y%m%d')}"
     
 
-    if cached_data := cache.get(cache_key) and not request.GET.get('refresh'):
+    if (cached_data := cache.get(cache_key)) is not None and not request.GET.get('refresh'):
         context = cached_data
         logger.debug("Используем кэшированные данные дашборда")
     else:
